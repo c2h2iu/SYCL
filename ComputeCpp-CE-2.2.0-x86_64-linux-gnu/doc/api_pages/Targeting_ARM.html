@@ -1,0 +1,98 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Targeting ARM</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Targeting ARM</h1>
+                <main>
+<h2>Pre-Requisites</h2>
+<ul>
+<li>OpenCL Drivers</li>
+</ul>
+<p>In order to use ComputeCpp with our ARM® release you first need to obtain OpenCL drivers with SPIR/SPIR-V support for the device you are using.</p>
+<p>These need to be obtained from the manufacturer of the hardware. Alternatively, you can <a href="https://www.codeplay.com/support/contact">contact us</a> to find out about using ComputeAorta, our implementation of OpenCL.</p>
+<p><strong>Note:</strong> Without an OpenCL driver ComputeCpp will fail to link.</p>
+<h2>Download ComputeCpp for ARM®</h2>
+<p>You can download the Arm version of ComputeCpp CE from the downloads page.</p>
+<h2>Getting Started</h2>
+<p>To start using ComputeCpp on your Arm hardware, copy the downloaded archive onto the device and extract this to "user/local/computecpp".</p>
+<p>Now run this command to check if your hardware is supported by ComputeCpp:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="p">.</span><span class="o">/</span><span class="n">user</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">computecpp</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">computecpp_info</span>
+</pre></div>
+</code></pre>
+<p>If the output of this command includes an error about "libOpenCL" then it cannot find the OpenCL drivers required for your device.</p>
+<p>If the drivers are successfully installed the output will look something like this.</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="o">********************************************************************************</span>
+<span class="n">ComputeCpp</span> <span class="n">Info</span>
+<span class="o">********************************************************************************</span>
+<span class="n">Toolchain</span> <span class="nl">information</span><span class="p">:</span>
+
+<span class="n">GLIBC</span> <span class="nl">version</span><span class="p">:</span> <span class="mf">2.24</span>
+<span class="nl">GLIBCXX</span><span class="p">:</span> <span class="mi">20160609</span>
+<span class="n">This</span> <span class="n">version</span> <span class="n">of</span> <span class="n">libstdc</span><span class="o">++</span> <span class="n">is</span> <span class="n">supported</span><span class="p">.</span>
+<span class="o">********************************************************************************</span>
+<span class="n">Device</span> <span class="nl">Info</span><span class="p">:</span>
+
+<span class="n">Discovered</span> <span class="mi">1</span> <span class="n">devices</span> <span class="nl">matching</span><span class="p">:</span>
+  <span class="nl">platform</span>    <span class="p">:</span> <span class="o">&lt;</span><span class="n">any</span><span class="o">&gt;</span>
+  <span class="n">device</span> <span class="nl">type</span> <span class="p">:</span> <span class="o">&lt;</span><span class="n">any</span><span class="o">&gt;</span>
+<span class="o">--------------------------------------------------------------------------------</span>
+<span class="n">Device</span> <span class="mi">0</span><span class="o">:</span>
+  <span class="n">Device</span> <span class="n">is</span> <span class="nl">supported</span>                     <span class="p">:</span> <span class="n">NO</span> <span class="o">-</span> <span class="n">Device</span> <span class="n">does</span> <span class="n">not</span> <span class="n">support</span> <span class="n">SPIR</span>
+  <span class="nl">CL_DEVICE_NAME</span>                          <span class="p">:</span> <span class="o">&lt;</span><span class="n">Device</span> <span class="n">name</span><span class="o">&gt;</span>
+  <span class="nl">CL_DEVICE_VENDOR</span>                        <span class="p">:</span> <span class="n">ARM</span>
+  <span class="nl">CL_DRIVER_VERSION</span>                       <span class="p">:</span> <span class="mf">2.0</span>
+  <span class="nl">CL_DEVICE_TYPE</span>                          <span class="p">:</span> <span class="n">CL_DEVICE_TYPE_GPU</span>
+<span class="o">********************************************************************************</span>
+</pre></div>
+</code></pre>
+<p>Although the message suggests that the device is not supported this is actually incorrect and can be used with ComputeCpp.</p>
+<p>You can now clone the ComputeCpp package from GitHub that contains the sample code so that it can be built and executed.</p>
+<h3>Set up the ComputeCpp Build Environment</h3>
+<p>The sample code for ComputeCpp is built using CMake (minimum v 3.2.2), you can find out more about CMake here.</p>
+<p>Most Linux platforms also offer CMake through a packaging system such as wget or apt-get making it easy to install.</p>
+<p><strong>The CMake variable</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">ComputCPP_DIR</span>
+</pre></div>
+</code></pre>
+<p>must be set in order to build with ComputeCpp.</p>
+<p>This should be set to the root directory of the ComputeCpp install (i.e the directory with the folders bin, include, lib)</p>
+<h3>Build a ComputeCpp Application</h3>
+<p>We’ll now build the simple_vector_add sample code, this application adds two vectors of scalar type on a SYCL device.</p>
+<p>First in the terminal change to the root directory of the package you cloned from GitHub. This is the folder containing "samples" and "documents"</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="n">build</span>
+</pre></div>
+</code></pre>
+<p>Now change into that directory</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">build</span>
+</pre></div>
+</code></pre>
+<p>Then call cmake to build all the sample code in the package</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="p">..</span><span class="o">/</span><span class="n">samples</span> <span class="o">-</span><span class="n">DComputeCPP_DIR</span><span class="o">=/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">computecp</span>
+<span class="n">make</span>
+</pre></div>
+</code></pre>
+<p>This will build the executable for the sample code.</p>
+<h2>Execute a ComputeCpp Application</h2>
+<p>In the "simple_vector_add" folder simply call the generated file to execute</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">simple_vector_add</span>
+<span class="p">.</span><span class="o">/</span><span class="n">simple_vector_add</span>
+</pre></div>
+</code></pre>
+<p>When successful you will see an output in the terminal window whether the programming executed successfully or not.</p>
+<h2>Modify a ComputeCpp Application</h2>
+<p>This sample application adds two simple vectors together. These vectors are held in arrays within the code.</p>
+<p>The application adds A and B together and puts the sum into C, and also adds D and E together and puts them in F.</p>
+<p>Change some of the numbers in the arrays, build again using the make command and then execute again in the same way as in the "Execute a ComputeCpp application" step.</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">make</span>
+</pre></div>
+</code></pre>
+<p>We now recommend that you find out more about how ComputeCpp application are structured in the <a href="computecpp_anatomy_of_an_app.html">Anatomy Of A ComputeCpp</a> Application article.</p>
+<p>You can also explore the other Sample Code applications and read the <a href="computecpp_integration_guide.html">ComputeCpp Integration Guide</a>.</p></main>
+            </body>
+        </html>
+        

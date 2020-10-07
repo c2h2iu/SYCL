@@ -1,0 +1,795 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Migration</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Migration</h1>
+                <main>
+<p>In this chapter we provide mapping tables for the main nomenclature differences between
+SYCL, CUDA, and OpenCL. Knowing the equivalent nomenclature for each platform
+is essential to migrate a CUDA code to a SYCL code. The actual function call
+for CUDA terminology can be found in <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html">CUDA C programming
+guide</a>. For
+OpenCL, the function call syntax can be found in <a href="https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/">OpenCL 1.2 reference
+pages</a>. The SYCL syntax function call can be found in <a href="https://www.khronos.org/registry/SYCL/specs/sycl-1.2.1.pdf">Khronos SYCL 1.2.1
+specification</a>.  </p>
+<h2>Execution model equivalence</h2>
+<table>
+<thead>
+<tr>
+<th align="center">CUDA</th>
+<th align="center">SYCL</th>
+<th align="center">OpenCL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">SM</td>
+<td align="center">CU</td>
+<td align="center">CU</td>
+</tr>
+<tr>
+<td align="center">SM core</td>
+<td align="center">PE</td>
+<td align="center">PE</td>
+</tr>
+<tr>
+<td align="center">thread</td>
+<td align="center">work-item</td>
+<td align="center">work-item</td>
+</tr>
+<tr>
+<td align="center">block</td>
+<td align="center">work-group</td>
+<td align="center">work-group</td>
+</tr>
+</tbody>
+</table>
+<h2>Memory model equivalence</h2>
+<table>
+<thead>
+<tr>
+<th align="center">CUDA</th>
+<th align="center">SYCL</th>
+<th align="center">OpenCL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">register</td>
+<td align="center">private memory</td>
+<td align="center">private memory</td>
+</tr>
+<tr>
+<td align="center">shared memory</td>
+<td align="center">local memory</td>
+<td align="center">local memory</td>
+</tr>
+<tr>
+<td align="center">constant memory</td>
+<td align="center">constant memory</td>
+<td align="center">constant memory</td>
+</tr>
+<tr>
+<td align="center">global memory</td>
+<td align="center">global memory</td>
+<td align="center">global memory</td>
+</tr>
+<tr>
+<td align="center">local memory</td>
+<td align="center">N/A(device specific)</td>
+<td align="center">N/A(device specific)</td>
+</tr>
+</tbody>
+</table>
+<h2>Host API equivalence</h2>
+<h3>Platform API equivalence</h3>
+<table>
+<thead>
+<tr>
+<th align="center">CUDA</th>
+<th align="center">SYCL</th>
+<th align="center">OpenCL</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center"><code>cudaStreamCreate()</code></td>
+<td align="center"><code>queue</code> class</td>
+<td align="center"><code>clCreateCommmandQueue()</code></td>
+<td>By default the CUDA stream will be constructed by the CUDA driver.</td>
+</tr>
+<tr>
+<td align="center"><code>cudaStreamDestroy()</code></td>
+<td align="center"><code>N/A</code></td>
+<td align="center"><code>clReleaseCommandQueue()</code></td>
+<td>In CUDA this function is required if the stream is created explicitly.<br/> In SYCL this is handled by the run-time</td>
+</tr>
+<tr>
+<td align="center"><code>cuStreamSynchronize()</code> <br/> <code>cudaDeviceSynchronize()</code></td>
+<td align="center"><code>queue::wait()</code></td>
+<td align="center"><code>clEnqueueBarrierWithWaitList()</code></td>
+<td></td>
+</tr>
+<tr>
+<td align="center"><code>cuStreamWaitEvent()</code></td>
+<td align="center"><code>event::wait()</code></td>
+<td align="center"><code>clWaitForEvents()</code></td>
+<td></td>
+</tr>
+<tr>
+<td align="center"><code>cudaStreamAddCallback()</code></td>
+<td align="center"><code>N/A</code></td>
+<td align="center"><code>clSetEventCallback()</code></td>
+<td>SYCL does not support a callback function.</td>
+</tr>
+<tr>
+<td align="center"><code>N/A</code></td>
+<td align="center"><code>platform::get()</code></td>
+<td align="center"><code>clGetPlatformIDs()</code></td>
+<td>This is optional in SYCL and it can be handled by the SYCL runtime via <code>device_selector</code></td>
+</tr>
+<tr>
+<td align="center"><code>cuCtxCreate()</code></td>
+<td align="center"><code>context</code> class</td>
+<td align="center"><code>clCreateContext()</code></td>
+<td>By default it will be constructed by the CUDA driver. <br/> By default this will be constructed by SYCL via the device selector</td>
+</tr>
+<tr>
+<td align="center"><code>CUDAGetDevice()</code></td>
+<td align="center"><code>device</code> class</td>
+<td align="center"><code>clGetDeviceInfo()</code></td>
+<td></td>
+</tr>
+<tr>
+<td align="center"><code>CUDASetDevice()</code></td>
+<td align="center"><code>device_selector</code> class</td>
+<td align="center"><code>N/A</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3>Memory management API equivalence</h3>
+<table>
+<thead>
+<tr>
+<th>CUDA</th>
+<th align="center">SYCL</th>
+<th align="center">OpenCL</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cudaMalloc()</code><br/><code>cudaMallocHost()</code> <br/> <code>cudaHostAlloc()</code></td>
+<td align="center"><code>buffer</code> class</td>
+<td align="center"><code>clCreateBuffer()</code> <br/> <code>clEnqueueMapBuffer()</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>cudaHostGetDevicePointer()</code></td>
+<td align="center"><code>accessor</code> class</td>
+<td align="center"><code>N/A</code></td>
+<td>OpenCL does not support a unified memory system.</td>
+</tr>
+<tr>
+<td><code>cudaMemset()</code></td>
+<td align="center"><code>handler::fill()</code></td>
+<td align="center"><code>clEnqueueFillBuffer()</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>cudaMemcpyAsync()</code> <br/> <code>cudaMemcpy()</code></td>
+<td align="center"><code>handler::copy()</code></td>
+<td align="center"><code>clEnqueueReadBuffer()</code> <br/> <code>clEnqueueWriteBuffer()</code> <br/> <code>clEnqueueCopyBuffer()</code></td>
+<td>In SYCL explicit copy is optional. This means that a user can explicitly copy the data between host or device. If a user does not provide an explicit copy, the data transfer is handled implicitly.</td>
+</tr>
+<tr>
+<td><code>cudaFree()</code></td>
+<td align="center"><code>N/A</code></td>
+<td align="center"><code>clReleaseMemObject()</code></td>
+<td>The buffer deletion is handled by the SYCL runtime, when an application exits the end of the SYCL scope <code>{}</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3>Runtime API equivalent</h3>
+<table>
+<thead>
+<tr>
+<th align="center">CUDA</th>
+<th align="center">SYCL</th>
+<th align="center">OpenCL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center"><code>&lt;&lt;&lt;....&gt;&gt;&gt;</code></td>
+<td align="center"><code>nd_range</code> class</td>
+<td align="center"><code>global_work_size</code> <br/> <code>local_work_size</code> variables</td>
+</tr>
+<tr>
+<td align="center"><code>"kernel function name"&lt;&lt;&lt;...&gt;&gt;&gt;()</code></td>
+<td align="center"><code>queue::submit()</code></td>
+<td align="center"><code>clCreateProgramWithSource/Binary()</code> <br/> <code>clBuildProgram()</code> <br/> <code>clCreateKernel()</code> <br/> <code>clCreateKernel()</code> <br/> <code>clSetKernelArg()</code> <br/> <code>clEnqueueNDRangeKernel()</code></td>
+</tr>
+</tbody>
+</table>
+<h2>Device API equivalence</h2>
+<h3>Kernel functions qualifiers</h3>
+<p>Qualifiers are not needed in SYCL as they are all abstracted by the SYCL runtime classes, but OpenCL ones are provided for reference.</p>
+<table>
+<thead>
+<tr>
+<th>CUDA</th>
+<th align="center">SYCL</th>
+<th>OpenCL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>__global__</code> function</td>
+<td align="center"><code>N/A</code></td>
+<td><code>__kernel</code> function</td>
+</tr>
+<tr>
+<td><code>__device__</code> function</td>
+<td align="center"><code>N/A</code></td>
+<td><code>N/A</code></td>
+</tr>
+<tr>
+<td><code>__constant__</code> variable declaration</td>
+<td align="center"><code>N/A</code></td>
+<td><code>__constant</code> variable declaration</td>
+</tr>
+<tr>
+<td><code>__device__</code> variable declaration</td>
+<td align="center"><code>N/A</code></td>
+<td><code>__global</code> variable declaration</td>
+</tr>
+<tr>
+<td><code>__shared__</code> variable declaration</td>
+<td align="center"><code>N/A</code></td>
+<td><code>__local</code> variable declaration</td>
+</tr>
+</tbody>
+</table>
+<h3>Indexing equivalence</h3>
+<p>Please note that this is the general mapping between CUDA, OpenCL, and SYCL. Some architectures my not support 3 dimensions.</p>
+<table>
+<thead>
+<tr>
+<th>CUDA</th>
+<th align="center">SYCL</th>
+<th>OpenCL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>N/A</code></td>
+<td align="center"><code>nd_item</code> class</td>
+<td><code>N/A</code></td>
+</tr>
+<tr>
+<td><code>gridDim.{x, y, z}</code></td>
+<td align="center"><code>nd_item::get_num_group({0,1,2})</code></td>
+<td><code>get_num_group({0,1,2})</code></td>
+</tr>
+<tr>
+<td><code>blockDim.{x, y, z}</code></td>
+<td align="center"><code>nd_item::get_local_range({0,1,2})</code></td>
+<td><code>get_local_size({0,1,2})</code></td>
+</tr>
+<tr>
+<td><code>blockIdx.{x, y, z}</code></td>
+<td align="center"><code>nd_item::get_group({0,1,2})</code></td>
+<td><code>get_group_id({0,1,2})</code></td>
+</tr>
+<tr>
+<td><code>threadIdx.{x, y, z}</code></td>
+<td align="center"><code>nd_item::get_local({0,1,2})</code></td>
+<td><code>get_local_id({0,1,2})</code></td>
+</tr>
+<tr>
+<td><code>N/A</code></td>
+<td align="center"><code>nd_item::get_global({0,1,2})</code></td>
+<td><code>get_global_id({0,1,2})</code></td>
+</tr>
+<tr>
+<td><code>N/A</code></td>
+<td align="center"><code>nd_item::get_linear_group_id()</code></td>
+<td><code>N/A</code></td>
+</tr>
+<tr>
+<td><code>N/A</code></td>
+<td align="center"><code>nd_item::get_linear_local_id()</code></td>
+<td><code>N/A</code></td>
+</tr>
+<tr>
+<td><code>N/A</code></td>
+<td align="center"><code>nd_item::get_linear_global_id()</code></td>
+<td><code>N/A</code></td>
+</tr>
+</tbody>
+</table>
+<h3>Synchronization equivalence</h3>
+<table>
+<thead>
+<tr>
+<th>CUDA</th>
+<th align="center">SYCL</th>
+<th>OpenCL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>__syncthread()</code></td>
+<td align="center"><code>nd_item::barrier()</code></td>
+<td><code>barrier()</code></td>
+</tr>
+<tr>
+<td><code>__threadfence_block()</code></td>
+<td align="center"><code>nd_item::mem_fence()</code></td>
+<td><code>mem_fence()</code></td>
+</tr>
+<tr>
+<td><code>N/A</code></td>
+<td align="center"><code>nd_item::mem_fence()</code></td>
+<td><code>read_mem_fence()</code></td>
+</tr>
+<tr>
+<td><code>N/A</code></td>
+<td align="center"><code>nd_item::mem_fence()</code></td>
+<td><code>write_mem_fence()</code></td>
+</tr>
+<tr>
+<td><code>__threadfence()</code></td>
+<td align="center"><code>N/A</code></td>
+<td><code>N/A</code></td>
+</tr>
+<tr>
+<td><code>__threadfence_system()</code></td>
+<td align="center"><code>N/A</code></td>
+<td><code>N/A</code></td>
+</tr>
+</tbody>
+</table>
+<h2>How to rewrite CUDA multi-GPU code for SYCL</h2>
+<p>NVIDIA CUDA supports using multiple GPUs from versions &gt;= 4.0.
+CUDA can dispatch CUDA kernels, data movement, communication and synchronization
+among all NVIDIA GPUs.</p>
+<p>OpenCL supports using multiple OpenCL-enabled devices for dispatching kernels,
+data movement, communication and synchronization only if they reside in
+the same OpenCL context. NVIDIA devices do not have the context restriction as all
+NVIDIA devices share the same context created for the NVIDIA platform.  In general,
+a computer or a device can accommodate more than one OpenCL-enabled device,
+provided by different vendors. An example could be a desktop computer with both
+Intel and AMD GPUs where each of them has its own OpenCL driver.  Therefore,
+each device belongs to a different OpenCL platform and must have a different context.
+In such case, two separate OpenCL buffers must be created. Data movement,
+communication and synchronization must be handled manually. SYCL, on the other
+hand,  not only supports dispatching the kernels to multiple OpenCL devices, but it can also implicitly handle the data
+movement, synchronization and communication among all OpenCL-enabled
+devices, irrespective of the platform they belong to.</p>
+<h3>CUDA multiple GPU</h3>
+<p>A single CPU thread can be used for handling multiple GPUs in CUDA. The following
+function is used to get the number of available NVIDIA GPU devices in CUDA:</p>
+<p><code>cudaError_t cudaGetDeviceCount(int* num_gpu);</code></p>
+<p><code>cudaSetDevice</code> can be used to choose a specific device for dispatching a CUDA
+kernel. The following pseudo-code demonstrates dispatching a kernel on multiple
+NVIDIA GPUs:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="p">....</span>
+<span class="kt">int</span> <span class="n">num_gpu</span><span class="p">;</span>
+<span class="c1">// finding available number of NVIDIA GPU devices</span>
+<span class="n">cudaGetDeviceCount</span><span class="p">(</span><span class="o">&amp;</span><span class="n">num_gpu</span><span class="p">);</span>
+
+<span class="c1">//looping over number of devices and dispatching a kernel per device.</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">ngpus</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// selecting the current device</span>
+    <span class="n">cudaSetDevice</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+    <span class="c1">// executing a my_kernel on the selected device</span>
+    <span class="n">my_kernel</span><span class="o">&lt;&lt;&lt;</span><span class="n">num_blocks</span><span class="p">,</span> <span class="n">block_size</span><span class="o">&gt;&gt;&gt;</span><span class="p">(...);</span>
+    <span class="c1">// transfering data between the host and the selected device</span>
+    <span class="n">cudaMemcpy</span><span class="p">(...);</span>
+<span class="p">}</span>
+<span class="p">....</span>
+</pre></div>
+</code></pre>
+<p>Note that the above code dispatches a kernel by using a single thread. It is
+possible to parallelize the for loop launching the kernels. However, it is the
+user's responsibility to handle locking when multiple threads use multiple
+devices. See the <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-multi-gpu">CUDA C programming
+guide</a>
+for further information.</p>
+<h3>SYCL multiple devices</h3>
+<p>The list of SYCL supported platforms can be obtained with the list of devices for 
+each platform by calling <code>get_platforms(</code>) and <code>platform.get_devices()</code>
+respectively. Once we have all the devices,  we can construct a queue per
+device and dispatch different kernels to different queues.</p>
+<p>When there is only one device, kernels can be submitted to the same device.
+The following code snippet represents dispatching multiple kernels to a single
+SYCL device:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="p">...;</span>
+
+<span class="c1">// constructing the quue for an specefic device</span>
+<span class="k">auto</span> <span class="n">my_queue</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">queue</span><span class="p">(</span><span class="n">device_selector</span><span class="p">);</span>
+
+<span class="c1">// submitting a kernel to a the sycl queue</span>
+<span class="n">my_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span> <span class="o">&amp;</span><span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+    <span class="p">....</span>
+  <span class="c1">// sycl kernel 1</span>
+  <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(....);</span>
+<span class="p">});</span>
+
+<span class="n">my_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span> <span class="o">&amp;</span><span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+    <span class="p">....</span>
+  <span class="c1">// sycl kernel 2</span>
+  <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(....);</span>
+<span class="p">});</span>
+
+<span class="n">my_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span> <span class="o">&amp;</span><span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+    <span class="p">....</span>
+  <span class="c1">// sycl kernel 3</span>
+  <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(....);</span>
+<span class="p">});</span>
+
+<span class="p">...;</span>
+</pre></div>
+</code></pre>
+<p>Moreover, when there are multiple devices, the
+kernels can be distributed among all devices. The following code snippet represents dispatching a
+kernel on multiple SYCL devices:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="p">...;</span>
+
+<span class="c1">// getting the list of all supported sycl platforms</span>
+<span class="k">auto</span> <span class="n">platfrom_list</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">platform</span><span class="o">::</span><span class="n">get_platforms</span><span class="p">();</span>
+<span class="c1">// getting the list of devices from the platform</span>
+<span class="k">auto</span> <span class="n">device_list</span> <span class="o">=</span> <span class="n">platform</span><span class="p">.</span><span class="n">get_devices</span><span class="p">();</span>
+<span class="c1">// looping over platforms</span>
+<span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span> <span class="o">&amp;</span><span class="nl">platform</span> <span class="p">:</span> <span class="n">platfrom_list</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// looping over devices</span>
+  <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span> <span class="o">&amp;</span><span class="nl">device</span> <span class="p">:</span> <span class="n">device_list</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">queue</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">queue</span><span class="p">(</span><span class="n">device</span><span class="p">);</span>
+    <span class="c1">// submitting a kernel to a the sycl queue</span>
+    <span class="n">queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span> <span class="o">&amp;</span><span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+      <span class="p">....</span>
+          <span class="c1">// sycl kernel</span>
+          <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(....);</span>
+    <span class="p">});</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="p">...;</span>
+</pre></div>
+</code></pre>
+<p>Unlike CUDA, dispatching kernels to multiple SYCL devices is a thread safe operation, 
+and can be done from different threads of execution.</p>
+<h2>Porting CUDA CPU library functions to SYCL</h2>
+<p>At the time of writing this document, the cuBLAS library, which is part of the CUDA 6.0 (and above) ecosystem, is the only library that can be used as a replacement for a CPU BLAS library directly by replacing the link flags in the build system.
+In particular, <a href="https://docs.nvidia.com/cuda/nvblas/index.html">NVBLAS</a> is an interception layer
+that replaces calls to a CPU-based BLAS library into its cuBLAS counterparts.
+No source code modification is required.</p>
+<p>Although technically possible, at the time of writing this document, such intercept layer for SYCL-BLAS has not been added to the SYCL ecosystem.
+In general, the interception layer mechanism is suitable for C-based interfaces, where the symbol name is clearly identifiable in the generated binary. C++-based interfaces rely on template meta-programing, which makes the interception of symbols at linki time difficult. However, a new BLAS library project with a C interface could implement this feature.</p>
+<h2>Porting CUDA debug code to SYCL</h2>
+<h3>Error-handling and reporting</h3>
+<p>In CUDA, all synchronous functions return an error code.
+Note that asynchronous functions (such as kernel execution) cannot possibly return an error code via its interface, so a later invocation to a function may return an error that comes from a previous API call.
+Typically, the error code returned by <code>cudaDeviceSynchronize</code> is used to query for the error of a previous kernel execution, although <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#error-checking">more advanced functionality is available</a>.
+Developers are encouraged to write their own checking macros to wrap API calls and catch synchronous errors.</p>
+<p>In SYCL, error reporting is done via the C++ exception mechanism. 
+Synchronous operations will throw exceptions derived from <code>cl::sycl::exception</code> and can be catch in-place by developers, like in the example below:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="k">try</span> <span class="p">{</span>
+    <span class="n">mySyclProgram</span><span class="p">.</span><span class="n">build_with_kernel_type</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">myKernel</span><span class="o">&gt;</span><span class="p">()</span>
+<span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">compile_program_error</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">" The program failed to build "</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>Asynchronous operations are captured and stored automatically by the SYCL runtime.
+Multiple exceptions are stored in the order they are captured in a list, of type <code>cl::sycl::exception_list</code>.
+On construction of a queue, an optional functor - the <em>asynchronous handler</em> - can be specified.
+Whenever a user calls the <code>wait_and_throw</code> or <code>async_throw</code> methods of the SYCL queue, 
+this functor is called. 
+Developers can use this function to handle custom behavior for dealing with exceptions, such as
+reducing the multiple exceptions in a list to the most severe one and re-throwing it.
+If neither of those methods are called, the exceptions are discarded when the queue object is destroyed.
+The <a href="https://github.com/codeplaysoftware/computecpp-sdk/blob/master/samples/async-handler/async-handler.cpp">async_handler example of the ComputeCpp SDK</a> illustrates the usage of this mechanism to rethrow and display exceptions.</p>
+<p>In both synchronous and asynchronous cases, when a SYCL-related error occurs, an object of type
+<code>cl::sycl::exception</code> will be thrown. SYCL exception objects are derived from the standard exception type <code>std::exception</code>. 
+Whenever a specific exception type is available, the SYCL exception type can inherit from the particular exception type and throw a more elaborate report regarding the captured error. Refer to the SYCL specification Section 4.9.2 for details on the Exception Class Interface.
+All SYCL exception objects contain a description message, whose contents are implementation defined.
+Whenever possible, a low-level OpenCL error and/or a pointer to a SYCL context is also provided.</p>
+<h3>Debugging SYCL code</h3>
+<p>The CUDA ecosystem includes a CUDA debugger, <a href="https://docs.nvidia.com/cuda/cuda-gdb/index.html">cuda-gdb</a>, which is based on gdb with some extensions to facilitate debugging of GPU code.
+Developers can also use printf inside CUDA kernels to display intermediate results.
+In addition, a functional correctness checking suite called <a href="https://docs.nvidia.com/cuda/cuda-memcheck/index.html">cuda-memcheck</a> is available to check different aspects of CUDA applications.</p>
+<p>In SYCL, we have to distinguish two kinds of debugging: (A) Debugging the host application or (B) debugging the device-specific behavior. 
+There is no standard solution for (B), as the code executed on the device can only be debugged within a debugger that contains supports for the given platform. This is inherently device-specific.
+On the other hand, (A) can be dealt with easily in SYCL. Any code that executes on a device must run on the host using a host queue. Hence, replacing a device-queue with a host queue will have the same expected output (minus device-specific behavior) as the original device queue.
+Since the host queue is implemented in pure C++, normal C++ debuggers can be used to inspect the behavior of the kernels on host.
+A host queue can be created on the host simply by creating a queue from a host device. A simple option to enable simple debugging on the host is to use a pre-processor macro when creating a custom debug build, as shown below:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="cp">#if __DEBUG_IN_HOST_DEVICE</span>
+<span class="c1">// Construct a host device</span>
+<span class="n">host_device</span> <span class="n">hd</span><span class="p">;</span>
+<span class="c1">// Create a queue with a host device</span>
+<span class="n">queue</span> <span class="nf">myQueue</span><span class="p">(</span><span class="n">hD</span><span class="p">);</span>
+<span class="cp">#else</span>
+<span class="c1">// Use the default selector of the platform</span>
+<span class="n">queue</span> <span class="n">myQueue</span><span class="p">;</span>
+<span class="cp">#endif</span>
+</pre></div>
+</code></pre>
+<p>The rest of the code remains unchanged.</p>
+<p>Using the same mechanism, any C++ check tool can be used to inspect the behavior of the application on the host. For example, <a href="http://valgrind.org/">valgrind</a> can be used to detect out of bounds access to arrays when using the host device without requiring special configuration options.</p>
+<p>To display intermediate results, SYCL developers can still use the low-level printf function, with equivalent behavior as the <a href="https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/printfFunction.html">OpenCL printf function</a>.
+For device kernels, C++ <em>iostream</em> operations (e.g, cout or cerr) are not available.
+However, a replacement SYCL stream class with equivalent functionality is available on the device.
+The SYCL stream class is defined in Section 4.12 of the SYCL 1.2.1 specification.
+The example <a href="https://github.com/codeplaysoftware/computecpp-sdk/blob/master/samples/hello-world/hello-world.cpp">hello-world in the ComputeCpp SDK</a> illustrates the usage of the stream object.
+The output of the stream object is displayed when the kernel execution completes.</p>
+<h2>Measuring SYCL application performance</h2>
+<p>SYCL application performance can be measured by enabling profiling in each SYCL
+queue. Queue profiling can be enabled by passing the SYCL property list with</p>
+<p><code>cl::sycl::property::queue::enable_profiling()</code> to a SYCL queue. </p>
+<p>Once profiling is enabled, the kernel execution submit time,
+kernel execution start time, and the kernel execution end time can be extratcted.</p>
+<p>The following code snippet represents how to add thenable profiling and extact
+the execution time from a sycl application.</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+
+  <span class="c1">// ...</span>
+
+  <span class="c1">// enabling SYCL queue profiling</span>
+  <span class="k">auto</span> <span class="n">property_list</span> <span class="o">=</span>
+      <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">property_list</span><span class="p">{</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">property</span><span class="o">::</span><span class="n">queue</span><span class="o">::</span><span class="n">enable_profiling</span><span class="p">()};</span>
+
+  <span class="c1">// adding the property list with profiling enabled option to the sycl queue. </span>
+  <span class="k">auto</span> <span class="n">sycl_queue</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">queue</span><span class="p">(</span><span class="n">property_list</span><span class="p">);</span>
+
+  <span class="c1">//....</span>
+
+  <span class="c1">// submitting sycl kernel</span>
+  <span class="k">auto</span> <span class="n">event</span> <span class="o">=</span> <span class="n">sycl_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">cgh</span><span class="p">){</span>
+
+    <span class="c1">//...</span>
+
+  <span class="p">});</span>
+
+  <span class="c1">// waiting for the kernel to finish</span>
+  <span class="n">event</span><span class="p">.</span><span class="n">wait</span><span class="p">();</span>
+
+  <span class="c1">// getting kerenl submission time</span>
+  <span class="k">auto</span> <span class="n">submit_time</span> <span class="o">=</span>
+        <span class="n">event</span><span class="p">.</span><span class="n">get_profiling_info</span><span class="o">&lt;</span>
+                <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">event_profiling</span><span class="o">::</span><span class="n">command_submit</span><span class="o">&gt;</span><span class="p">();</span>
+
+  <span class="c1">// getting kernel start time</span>
+  <span class="k">auto</span> <span class="n">start_time</span> <span class="o">=</span> <span class="n">event</span><span class="p">.</span><span class="n">get_profiling_info</span><span class="o">&lt;</span>
+                              <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">event_profiling</span><span class="o">::</span><span class="n">command_start</span><span class="o">&gt;</span><span class="p">();</span>
+
+  <span class="c1">// getting kernel end time</span>
+  <span class="k">auto</span> <span class="n">end_time</span> <span class="o">=</span> <span class="n">event</span><span class="p">.</span><span class="n">get_profiling_info</span><span class="o">&lt;</span>
+                            <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">event_profiling</span><span class="o">::</span><span class="n">command_end</span><span class="o">&gt;</span><span class="p">();</span>
+
+  <span class="c1">// calculating the duration between submitting a sycl kernel and executing </span>
+  <span class="c1">// sycl kernel in milliseconds.</span>
+  <span class="k">auto</span> <span class="n">submission_time</span> <span class="o">=</span> <span class="p">(</span><span class="n">start_time</span> <span class="o">-</span> <span class="n">submit_time</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1000000.0f</span><span class="p">;</span>
+
+  <span class="c1">// calculating the kernel execution time in milliseconds</span>
+  <span class="k">auto</span> <span class="n">execution_time</span> <span class="o">=</span> <span class="p">(</span><span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1000000.0f</span><span class="p">;</span>
+
+  <span class="c1">// .....</span>
+
+<span class="p">}</span>
+</pre></div>
+</code></pre>
+<h2>Porting CUDA build system to SYCL</h2>
+<p>The CUDA platform offers a single unified compiler that is capable of generating a final application binary from CUDA code, <code>nvcc</code>.
+Different versions of the CUDA platform offer different capabilities, refer to <a href="https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html">The nvcc documentation</a> for details.
+The CUDA compiler can also be used to build only the device code, and use another standard compiler (e.g, gcc) to link and compile on the host.</p>
+<p>In the SYCL standard, two mechanisms of compilation are described: (A) Single unified compiler and (B) Multiple compilers for the same source.
+Different SYCL implementations may implement (A), (B) or both.
+In this document we focus on Codeplay's ComputeCpp implementation. The details of the build system can be found in <a href="../../computecpp_integration_guide.html">the ComputeCpp integration guide</a>. 
+The integration guide contains detailed examples on integration of different build systems and different compilation options.</p>
+<h3>Switching from nvcc to compute++</h3>
+<p>The simplest way to switch from the NVIDIA CUDA compiler to the ComputeCpp SYCL compiler is to replace the former with the later.
+<code>compute++</code> is a clang driver, hence any standard clang and/or llvm options will be valid.
+For example, building a simple hello world cuda file:</p>
+<pre><code class="bash"><div class="highlight"><pre><span></span><span class="err">$</span> <span class="n">nvcc</span> <span class="n">hello_world</span><span class="p">.</span><span class="n">cu</span> <span class="o">-</span><span class="n">o</span> <span class="n">hello_world</span><span class="p">.</span><span class="n">exe</span>
+</pre></div>
+</code></pre>
+<p>Is equivalent to using compute++ to build the SYCL C++ source:</p>
+<pre><code class="bash"><div class="highlight"><pre><span></span><span class="err">$</span> <span class="n">compute</span><span class="o">++</span> <span class="n">hello_world</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">o</span> <span class="n">hello_world</span><span class="p">.</span><span class="n">exe</span>
+</pre></div>
+</code></pre>
+<p>Note compute++ builds C++ files, whereas CUDA builds <code>.cu</code> files. 
+CUDA is not considered standard C++, hence uses a different file type.
+This implies that CUDA files need to be converted to C++ sources before they can be built with SYCL C++.</p>
+<p>The following table shows the equivalence between <code>nvcc</code>-specific options and <code>compute++</code>.
+<code>nvcc</code>-specific options not listed here are not suported or not applicable to <code>compute++</code>.
+For all the standard options, refer to the <a href="https://clang.llvm.org/docs/ClangCommandLineReference.html">clang command line documentation</a></p>
+<table>
+<thead>
+<tr>
+<th>nvcc</th>
+<th align="center">compute++</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(default behavior)</em></td>
+<td align="center">-sycl-driver</td>
+<td>Compiles both host and device code into a single output binary</td>
+</tr>
+<tr>
+<td>--fatbin , --ptx, --cubin --device-c</td>
+<td align="center">-sycl -c  or -sycl-device-only</td>
+<td>Outputs only the <a href="../../computecpp_integration_guide.html">integration header</a></td>
+</tr>
+<tr>
+<td>--gpu-architecture, --gpu</td>
+<td align="center">-sycl-target ptx64 --cuda-gpu-arch</td>
+<td>Only when using <em>ptx64</em> target</td>
+</tr>
+</tbody>
+</table>
+<p>If the SYCL compiler-driver is used, there is no need to install any host-side compiler. If
+Single-source multiple-compiler passes is used, the
+installation of a host-side compiler, like g++, is required.</p>
+<h2>Porting CUDA stream to SYCL queue</h2>
+<h3>CUDA stream</h3>
+<p>A CUDA stream is a sequence of CUDA operations, submitted from host code. These
+operations are executed asynchronously in order of submission.
+It is always users'  responsibility to synchronize the operation
+before using the result. If no CUDA stream is given, a default CUDA stream is
+created and all operations are submitted to the default stream. </p>
+<p>It is possible to overlap the execution of multiple CUDA operations by creating
+multiple CUDA streams and submitting them to different streams. This can be
+used to overlap submission of kernels with data transfer operations.</p>
+<p>The following code snippet demonstrates how to define, create, and release a
+CUDA stream object. See the <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#streams">CUDA C programming guide</a> for
+more information.</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="c1">// defining a CUDA stream object</span>
+<span class="n">cudaStream_t</span> <span class="n">stream</span><span class="p">;</span>
+<span class="c1">// creating a CUDA stream object</span>
+<span class="n">cudaError_t</span> <span class="n">err</span> <span class="o">=</span> <span class="n">cudaStreamCreate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream</span><span class="p">);</span>
+<span class="c1">// releasing a CUDA stream object</span>
+<span class="n">cudaError_t</span> <span class="n">err</span> <span class="o">=</span> <span class="n">cudaStreamDestroy</span><span class="p">(</span><span class="n">stream</span><span class="p">);</span>
+</pre></div>
+</code></pre>
+<h3>SYCL queue</h3>
+<p>In a similar fashion to CUDA streams, SYCL queues submit command groups for
+execution asynchronously.  However, SYCL is a higher-level programming model,
+and data transfer operations are implicitly deduced from the dependencies of
+the kernels submitted to any queue. Furthermore, SYCL queues can map to
+multiple OpenCL queues, enabling transparent overlapping of data-transfer and
+kernel execution.  The SYCL runtime handles the execution order of the
+different command groups (kernel + dependencies) automatically across multiple
+queues in different devices.</p>
+<p>We can create a SYCL queue by instantiating the queue class.</p>
+<p><code>cl::sycl::queue myQueue{device_selector}</code></p>
+<p>The <code>device_selector</code> determines the SYCL device we are going to use.The system
+resources required by the queue are released automatically after it goes out of
+scope following C++ RAII rules.  </p>
+<h3>Event mechanism</h3>
+<h4>CUDA event function</h4>
+<p>A CUDA event is a marker associated with a certain point in the stream. A CUDA
+event can be used either to synchronize the stream execution or to monitor the
+progress in the device. The following code snippet represents the declaration,
+construction and releasing of a CUDA event. More information can be found in
+<a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#events">CUDA C programming guide</a> </p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="c1">// declaration of a CUDA event</span>
+<span class="n">cudaEvent_t</span> <span class="n">event</span><span class="p">;</span>
+<span class="c1">// creation of a CUDA event</span>
+<span class="n">cudaError_t</span> <span class="nf">cudaEventCreate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">event</span><span class="p">);</span>
+
+<span class="c1">// using the event here ...</span>
+
+<span class="c1">// releasing a CUDA event</span>
+<span class="n">cudaError_t</span> <span class="nf">cudaEventDestroy</span><span class="p">(</span><span class="n">event</span><span class="p">);</span>
+</pre></div>
+</code></pre>
+<h4>SYCL event object</h4>
+<p>An event in SYCL is an abstraction of the OpenCL <code>cl_event</code> object. An OpenCL
+event is used to synchronize memory transfers, dispatch of kernels and
+signaling barriers.  As an abstraction layer on OpenCL events, SYCL events
+accommodate synchronization between different contexts, devices and platforms.
+The <code>submit</code> method in a SYCL queue returns a <code>cl::sycl::event</code>. SYCL events can
+be used to manually define synchronization points irrespective of the
+underlying device and, thus, can be used also to synchronize operations on host
+queues.</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="c1">// SYCL events are returned from a command group submission</span>
+<span class="k">auto</span> <span class="n">event</span> <span class="o">=</span> <span class="n">syclQueue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span> <span class="o">&amp;</span><span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+        <span class="cm">/** SYCL command group **/</span>
+      <span class="p">});</span>
+<span class="c1">// Users can wait on a specific event, regardless on where is submitted</span>
+<span class="n">event</span><span class="p">.</span><span class="n">wait</span><span class="p">();</span>
+<span class="c1">// Event is released automatically at the end of the scope</span>
+<span class="p">}</span>
+</pre></div>
+</code></pre>
+<h3>Triggering user functions from device events</h3>
+<h4>CUDA callback function</h4>
+<p>A stream callback function enables the execution of a host function provided by
+the application after all the previous operations in the stream have completed.
+A stream callback can be submitted to a CUDA stream by calling the following
+function:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cudaError_t</span> <span class="nf">cudaStreamAddCallback</span><span class="p">(</span><span class="n">cudaStream_t</span> <span class="n">stream</span><span class="p">,</span>
+<span class="n">cudaStreamCallback_t</span> <span class="n">callback</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">userData</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
+</pre></div>
+</code></pre>
+<p>Where the <code>callback</code> is the callback function and the <code>userData</code> is the
+parameter passed to the callback function.</p>
+<p>A CUDA stream callback has the following restrictions: </p>
+<ul>
+<li>A callback function cannot call any CUDA API function</li>
+<li>A callback function cannot contain any synchronization function.</li>
+</ul>
+<p>The following code snippet represents the usage of the CUDA callback example.</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="n">CUDART_CB</span> <span class="nf">callback_func</span><span class="p">(</span><span class="n">cudaStream_t</span> <span class="n">stream</span><span class="p">,</span> <span class="n">cudaError_t</span> <span class="n">status</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">printf</span><span class="p">(</span><span class="s">"callback function is called);</span>
+<span class="p">}</span>
+<span class="c1">// defining a CUDA stream object</span>
+<span class="n">cudaStream_t</span> <span class="n">stream</span><span class="p">;</span>
+<span class="c1">// creating a CUDA stream object</span>
+<span class="n">cudaError_t</span> <span class="n">err</span> <span class="o">=</span> <span class="n">cudaStreamCreate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream</span><span class="p">);</span>
+<span class="c1">// launching the first lernel</span>
+<span class="n">first_kernel</span><span class="o">&lt;&lt;&lt;</span><span class="n">numBlock</span><span class="p">,</span> <span class="n">blockSize</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">stream</span><span class="o">&gt;&gt;&gt;</span><span class="p">();</span>
+<span class="n">second_kernel</span><span class="o">&lt;&lt;&lt;</span><span class="n">numBlock</span><span class="p">,</span> <span class="n">blockSize</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">stream</span><span class="o">&gt;&gt;&gt;&gt;</span><span class="p">();</span>
+<span class="n">third_kernel</span><span class="o">&lt;&lt;&lt;</span><span class="n">numBlock</span><span class="p">,</span> <span class="n">blockSize</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">stream</span><span class="o">&gt;&gt;&gt;&gt;</span><span class="p">();</span>
+<span class="n">cudaStreamAddCallback</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">callback_func</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+<span class="c1">// releasing a CUDA stream object</span>
+<span class="n">cudaError_t</span> <span class="n">err</span> <span class="o">=</span> <span class="n">cudaStreamDestroy</span><span class="p">(</span><span class="n">stream</span><span class="p">);</span>
+</pre></div>
+</code></pre>
+<h4>SYCL callback function</h4>
+<p>There is no direct functionality in SYCL to trigger a host callback from a device function.
+Developers can manually wait on an event and call the callback function afterwards. 
+The following code snippet represents an example of a callback function implementation using this mechanism.</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">my_callback</span> <span class="o">=</span>
+    <span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">my_string</span><span class="p">)</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">my_string</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span> <span class="p">}</span>
+<span class="c1">// constructing the SYCL queue</span>
+<span class="k">auto</span> <span class="n">queue</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">queue</span><span class="p">{</span><span class="n">default_selector</span><span class="p">};</span>
+<span class="c1">// data on host</span>
+<span class="k">auto</span> <span class="n">vec</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">{</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">};</span>
+<span class="c1">// constructing a SYCL buffer</span>
+<span class="k">auto</span> <span class="n">buffer</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">float</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">{</span><span class="n">vec</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="p">{</span><span class="mi">100</span><span class="p">}};</span>
+
+  <span class="c1">// submitting the kernel to the queue</span>
+  <span class="k">auto</span> <span class="n">event</span> <span class="o">=</span> <span class="n">queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span> <span class="o">&amp;</span><span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// getting a read_write access over SYCL buffer</span>
+    <span class="k">auto</span> <span class="n">acc</span> <span class="o">=</span> <span class="n">buffer</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read_write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
+    <span class="c1">// SYCL device kernel</span>
+    <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">kernel</span><span class="o">&gt;</span><span class="p">(</span>
+        <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">{</span><span class="mi">100</span><span class="p">},</span>
+        <span class="p">[](</span><span class="n">cl</span><span class="o">::</span><span class="n">syc</span><span class="o">::</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">id</span><span class="p">)</span> <span class="p">{</span> <span class="n">acc</span><span class="p">[</span><span class="n">id</span><span class="p">]</span> <span class="o">+=</span> <span class="n">acc</span><span class="p">[</span><span class="n">id</span><span class="p">];</span> <span class="p">});</span>
+  <span class="p">});</span>
+
+<span class="c1">// The future can be waited or stored elsewhere, and the callback will execute </span>
+<span class="c1">//asynchronously.</span>
+<span class="k">auto</span> <span class="n">fut</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">async</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+  <span class="c1">// wait for the kernels to finish</span>
+  <span class="n">event</span><span class="p">.</span><span class="n">wait</span><span class="p">();</span>
+  <span class="c1">// calling the callback function after the kernel execution</span>
+  <span class="n">my_callback</span><span class="p">(</span><span class="s">"This is a callback function"</span><span class="p">);</span>
+<span class="p">});</span>
+</pre></div>
+</code></pre>
+<p>This achieves the same result as a CUDA callback, using pure C++ features.</p>
+<p>Codeplay has proposed to the SYCL standard a new type of handler, the <em>host_handler</em>, 
+that is capable of executing a single task on the host and can be submitted directly to the
+SYCL device queue. It ensures that this task is executed asynchronously and
+in-order w.r.t the other command groups on the same queue. See the <a href="https://github.com/codeplaysoftware/standards-proposals/blob/master/asynchronous-data-flow/sycl-2.2/03_interacting_with_data_on_the_host.md#enqueuing-host-tasks-on-sycl-queues">Enqueuing
+host tasks on SYCL
+queues</a>
+proposal in SYCL for further information. 
+This feature is available since ComputeCpp 0.5.1 and above as a vendor extension.</p></main>
+            </body>
+        </html>
+        

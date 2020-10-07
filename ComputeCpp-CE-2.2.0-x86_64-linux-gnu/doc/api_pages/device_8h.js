@@ -1,0 +1,25 @@
+var device_8h =
+[
+    [ "device", "classcl_1_1sycl_1_1device.html", "classcl_1_1sycl_1_1device" ],
+    [ "info_convert< cl_device_id *, device >", "structcl_1_1sycl_1_1info__convert_3_01cl__device__id_01_5_00_01device_01_4.html", null ],
+    [ "hash< cl::sycl::device >", "structstd_1_1hash_3_01cl_1_1sycl_1_1device_01_4.html", "structstd_1_1hash_3_01cl_1_1sycl_1_1device_01_4" ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#aa45034b00fab265ff2abe8c7b07004cc", null ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#adcf84ab296dcee070f0ed784bd394429", null ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#aa2830508d08a6bae96c51d0aaa2c030d", null ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#a42366f0190799080b8a7d6c341c4ead3", null ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#a6e46ff5d723b960de3ce461269edcc78", null ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#a1dad09161b8dff4126b850c154bafb8f", null ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#aa47c320c39ec16a8e3986d3b17eaf991", null ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#a4d65d578f72574953989abb5bafb9097", null ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#a9f5d6033c056a861e04d0c75fbc54822", null ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#a0e48c1471bde74ec4a0ff0951b842eea", null ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#ac77d9357a72218d5d88c3052ded31240", null ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#aff57a14a595fe8e9507a3a62a50c8ade", null ],
+    [ "COMPUTECPP_GET_INFO_SPECIALIZATION_DECL", "device_8h.html#a4651ff0217b552be511fa77c5eff3da2", null ],
+    [ "device::create_sub_devices< info::partition_property::partition_by_affinity_domain >", "device_8h.html#ac0a16625195e8e892e14e62d923479d8", null ],
+    [ "device::create_sub_devices< info::partition_property::partition_by_counts >", "device_8h.html#a93bc9aade07890cbb024841295db26ed", null ],
+    [ "device::create_sub_devices< info::partition_property::partition_equally >", "device_8h.html#a4322a69209279c64daa8150fc161d490", null ],
+    [ "device::get_info< info::device::name >", "device_8h.html#a25088ca77125a46204d4875003592361", null ],
+    [ "device::get_info< info::device::vendor >", "device_8h.html#a7020f254ddb623859b517f6ad31461f0", null ],
+    [ "device::get_info< info::device::version >", "device_8h.html#af8468909f2c7ca0584176a1c974a4db2", null ]
+];

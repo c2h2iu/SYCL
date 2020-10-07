@@ -1,0 +1,232 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Introduction</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Introduction</h1>
+                <main>
+<h2>What is OpenCL</h2>
+<p>Introduced by Khronos, OpenCL is an explicit, industrial
+standard framework for cross-platform development supporting CPU, GPU, mobile devices and
+embedded platforms. Being a standard framework, OpenCL delivers high levels of 
+portability across a wide range of hardware. OpenCL is an explicit programming model: The OpenCL developer must explicitly define the platform, context 
+and schedule the work across multiple devices. In OpenCL 
+terminology, a user application is divided into two parts: a <em>host program</em> and 
+<em>device program (also called an OpenCL kernel)</em>. 
+The <em>host program</em> provides the outer control logic for configuring, constructing and
+executing an accelerator-based program, while the <em>device program</em> represents the program 
+executed on the selected accelerator.</p>
+<p>In the following sections we will explore each part in detail.</p>
+<h3>OpenCL host program</h3>
+<p>The OpenCL host program is composed of the two following APIs</p>
+<ol>
+<li>
+<p><em>OpenCL platform API</em> : a set of functions for identifying available
+OpenCL platforms, OpenCL devices per platform and their capabilities, and
+creating OpenCL context for OpenCL applications.</p>
+</li>
+<li>
+<p><em>OpenCL runtime API</em>: a set of functions to set the 
+OpenCL context, create an OpenCL command queue,create OpenCL memory objects, 
+build an OpenCL kernel, set arguments for an OpenCL kernel, transfer the data
+across host and device, and execute the OpenCL kernel.</p>
+</li>
+</ol>
+<h4>OpenCL context</h4>
+<p>An OpenCL context represents a set of devices from the OpenCL platform that can share the same OpenCL memory objects.
+OpenCL context can contain more than one device.
+The OpenCL implementation will manage the communication across all the devices in the context.
+In particular, whenever pre-defined synchronization points occur, the different memory objects from the context are updated with the latest copy of the data.</p>
+<p>An application can have more than one OpenCL context created from a different platform in order to distribute the tasks among multiple devices.</p>
+<h4>OpenCL command queue</h4>
+<p>An OpenCL command queue is used to dispatch operations to a certain device inside a given OpenCL context. 
+Such operations can be transferring data between host and device, or 
+launching and executing an OpenCL kernel for a particular device.
+Only one device can exist on a given queue. Operations across devices must be synchronized manually by the developer using OpenCL events and barriers. </p>
+<h4>OpenCL program object</h4>
+<p>A program object contains a collection of kernels, auxiliary functions and 
+constant data that can be used by kernel functions. </p>
+<p>OpenCL program objects are built either from OpenCL kernels in text source form (OpenCL C sources) or from pre-generated program binaries. 
+In particular, OpenCL implementations allow the usage of intermediate representations (IR), such as SPIR or SPIR-V, enabling other compilers to parse high-level languages into binary files.</p>
+<p>The OpenCL compiler can generate a program 
+executable for an appropriate target device in an online or offline mode.
+A program object stores the compiled executable code for each kernel on each device attached to it </p>
+<h4>OpenCL kernel object</h4>
+<p>OpenCL kernel objects represent the compiled binary of a specific device function (kernel) from a program object.
+Developers can pass arguments to a 
+kernel function that is contained within a program object using the OpenCL host API functions.
+Developers can also extract information from a specific kernel function, such as the amount of memory used or preferred work group size.</p>
+<h3>OpenCL Kernel programming language</h3>
+<p>The OpenCL kernel programming language (also called the OpenCL C programming Language)
+is a subset of ISO C99 standard. It is used for creating device programs. 
+As it is a subset of ISO C99, the following features are not supported in OpenCL 
+kernels:</p>
+<ul>
+<li>
+<p>Pointers to functions</p>
+</li>
+<li>
+<p>Bit-fields</p>
+</li>
+<li>
+<p>Recursive functions</p>
+</li>
+<li>
+<p>Dynamic memory allocation</p>
+</li>
+</ul>
+<p>However, given its parallel nature, it features some additions on top of the ISO C99 standard:
+<em> Native vector types: The OpenCL C compiler provides native handlers for different vector types that can be optimized by the backend later on.
+</em> Memory address spaces: Given the nature of the memory layout of heterogeneous platforms, OpenCL C offers native support for discontinuous address spaces, enabling developers to use all memory spaces supported by the device.</p>
+<h3>OpenCL memory type</h3>
+<p>OpenCL memory objects are represented by buffer objects on the host.
+A buffer object is a one-dimensional array of
+bytes. Each buffer is allocated within a context and, therefore, it will be
+visible to all devices within that context. 
+It is not possible to 
+create a memory object that is shared across different contexts.
+In order to use an OpenCL buffer across multiple devices of different platforms, the buffer data must be manually transferred across contexts.
+OpenCL provides a relaxed memory model: 
+Not all writes to a memory object will necessarily be visible to 
+all reads following those writes. 
+Memory is only guaranteed to be visible after certain synchronization points.</p>
+<p>It is possible to create a sub-buffer from 
+an OpenCL buffer. Each sub-buffer can be considered as a one-dimensional view of a region of a given buffer.
+Using a sub-buffer, two or more kernels using
+different sub-buffers, can be executed simultaneously, independent from each
+others.</p>
+<p>OpenCL also provides provides another type of memory called image. An image can be
+considered as an specialized type of OpenCL memory objects that provides 2D and
+3D access over the image data.
+OpenCL images are typically implemented using texture memory on GPU accelerators.</p>
+<h2>What is SYCL</h2>
+<p>SYCL (pronounced "sickle") is a royalty-free, cross-platform abstraction C++
+programming model for OpenCL[@khronos2009khronos], introduced, by Khronos<sup>TM</sup> group. 
+The SYCL abstraction layer provides a
+completely standard C++ <em>single-source</em> style programming model while
+maintaining the same performance portability as OpenCL, across other
+OpenCL-enabled platforms. This means that SYCL enables OpenCL kernels to be
+written inside C++ source files. Such abstraction has been designed to enable
+implementation across as wide a variety of platforms as possible, as well as
+ease of integration with other platform-specific technologies, thereby letting
+both users and implementors build on top of SYCL as an open platform for
+heterogeneous processing innovation.</p>
+<p>Using C++ features such as inheritance and templated libraries enables more
+developers to use OpenCL capabilities and devices to build simple, yet
+efficient, interfaces that were not possible to use in OpenCL 1.2. Software
+developers can develop and use generic algorithms and data structures using
+standard C++ template techniques, while still supporting the multi-platform,
+multi-device heterogeneous execution of OpenCL.</p>
+<p>SYCL is designed to be as close to standard C++ as possible. In practice, this
+means that as long as no dependency is created on SYCL's integration with
+OpenCL, a standard C++ compiler can compile the SYCL programs and it will run
+correctly on the host CPU.</p>
+<p>SYCL derives its device execution and memory models from the OpenCL kernel
+programming language.
+In particular, SYCL 1.2.1 is based on the OpenCL 1.2 specification.
+However, SYCL enables C++ programming on the device, instead of ISO C99. Due to OpenCL device model limitations, some features are not available:</p>
+<ul>
+<li>
+<p>Function pointers</p>
+</li>
+<li>
+<p>Recursion</p>
+</li>
+<li>
+<p>Virtual function calls (due to above)</p>
+</li>
+<li>
+<p>Exceptions</p>
+</li>
+<li>
+<p>RTTI (Runtime Type Information)</p>
+</li>
+<li>
+<p>Dynamic memory allocation</p>
+</li>
+</ul>
+<p>Note that OpenCL defines some hardware features that may not be available in all OpenCL platforms. 
+This limits the availability of certain C++ features on all platforms, like double floating point precision.</p>
+<h3>Single-source programming model</h3>
+<p>Unlike OpenCL-1.2, the single-source programming model in SYCL allows the
+kernel code to be embedded in the host code. 
+This ability can be useful
+especially when re-using functionality in kernels for various operations.
+Moreover, embedding kernel code inside the host code makes SYCL programming
+easier for new programmers and allows them to focus on parallelization
+concepts rather than the API details.</p>
+<h3>Single-source multiple-compiler passes</h3>
+<p>SYCL supports the single-source multiple compiler-passes (SMCP) technique which
+allows a single source file to be parsed by multiple compilers for generating
+device binaries alongside program binaries. </p>
+<p>For example, a compilation flow within SMCP uses a SYCL device compiler to parse
+a SYCL application and generate SPIR binaries.
+A standard host compiler can then parse the same SYCL application to produce the native host 
+code. The SYCL runtime library will load the SPIR binaries at runtime.
+The source file is then parsed twice by two different compilers.
+Although SYCL standard supports the SMCP model, it does not preclude the use of a single compiler flow.</p>
+<p>SMCP offers better integration with existing tool chains than a single
+compiler. An application that has been implemented using a certain compiler can
+continue to do so when using SYCL, as it is only the code that will be executed on the device that requires a different compilation step. 
+This design simplifies porting of pre-existing applications to SYCL. 
+In addition, the SMCP allows developers to use different device compilers from different vendors according to the target platform 
+preferred toolchain.</p>
+<p>This also helps when a CPU C++ compiler has been validated for
+safety as that compiler can be used unmodified, along with a SYCL device
+compiler for just the kernels.</p>
+<h3>OpenCL interoperability</h3>
+<p>SYCL provides the complete OpenCL feature set using the SYCL
+API. However, when interacting with existing OpenCL code or libraries, 
+it is possible to directly call OpenCL APIs in SYCL through interoperability functions.</p>
+<p>The main interoperability features used by developers are constructing SYCL buffers from OpenCL buffers, 
+and obtaining an OpenCL queue from the SYCL queue.</p>
+<h3>SYCL object scope</h3>
+<p>SYCL relies heavily on C++ object scope rules and <a href="https://en.cppreference.com/w/cpp/language/raii">RAII (Resource Acquisition
+Is Initialization)</a> to
+initialize and destroy device objects, including device memory. When a SYCL
+object is created, underlying OpenCL objects are created automatically by the
+runtime.  Whenever a SYCL object is copied or moved, the same underlying
+objects are used: No extra overhead of creation/destruction low-level
+structures is introduced.  Additional rules apply to memory objects. See SYCL
+Memory Types in the section below for details.</p>
+<h3>SYCL queue</h3>
+<p>A SYCL queue object schedules SYCL command
+groups (see section below) on a given SYCL device. 
+A SYCL queue can map to one or multiple OpenCL command queues, or to a host queue. For the former, the SYCL APIs will be mapped to the underlying OpenCL APIs to execute a SYCL application. 
+For the latter, the host queue, the SYCL API will be mapped to the host standard library.
+The host C++ APIs only require a C++ compiler and there is no
+need for OpenCL support. </p>
+<h3>SYCL command group</h3>
+<p>In SYCL, users can define a kernel and its dependencies inside <em>command group_s.
+A _command group</em> is a functor (or lambda) that takes a SYCL handler object as parameter.
+The handler provides the functionality that is available in the command group. 
+The underlying OpenCL objects are generated or re-used during the submission. 
+Submitting a SYCL command group object to SYCL queues will generate the required implicit memory update operations.
+Users can also dispatch explicit copy operations.</p>
+<h3>SYCL Memory</h3>
+<p>SYCL memory objects can be created either in the form of
+buffers, sub-buffers or images. 
+However, SYCL memory objects offer various additional functionalities over OpenCL. The SYCL memory objects can be an array of one, two or
+three dimensions. Unlike the OpenCL ones, SYCL memory objects are not bound to any
+context, except if it has been explicitly bounded to an OpenCL context or it
+has been directly constructed from OpenCL memory objects. 
+A SYCL buffer can migrate data across multiple OpenCL contexts, using any optimized mechanism available for the platform (e.g. fast DMA transfers).</p>
+<p>Data access in SYCL is separated from data storage. By relying on the C++-style
+resource acquisition is initialization (RAII) idiom to capture data
+dependencies between device code blocks, the runtime library can track data
+movement and provide correct behavior without the complexity of manually
+managing event dependencies between kernel instances and without the
+programming having to explicitly move data.  This approach enables the SYCL
+scheduler to automatically construct the data flow graph. By constructing a
+data flow graph, SYCL is able to automatically handle the coarse-grain
+task-based parallelism to identify the kernels' dependency and dispatch
+independent kernels concurrently whenever it is possible. This is an extension to
+the data parallelism, supported by the OpenCL execution model, and allows developers
+to build up SYCL programs easily and safely.</p></main>
+            </body>
+        </html>
+        

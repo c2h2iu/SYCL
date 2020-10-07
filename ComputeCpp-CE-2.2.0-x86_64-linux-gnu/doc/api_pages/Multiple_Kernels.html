@@ -1,0 +1,114 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Multiple Kernels</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Multiple Kernels</h1>
+                <main>
+<p>As weve seen before, SYCL kernels are launched asynchronously. To retrieve the results of computation, we must either run the destructor of the buffer that manages the data or create a host accessor. A question comes up - what if we want to execute multiple kernels over the same data, one after another? Surely we must then manually synchronize the accesses? Luckily, we barely have to do anything. The SYCL runtime will guarantee that dependencies are met and that kernels which depend on others results will not launch until the ones they depend on are finished.</p>
+<p>All of this is managed under the hood and controlled through buffers and accessors. It is deterministic enough for us to be able to know exactly what will happen. Lets see an example:</p>
+<p><strong>Executing interdependent kernels</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+  <span class="cp">#include</span> <span class="cpf">&lt;numeric&gt;</span><span class="cp"></span>
+
+  <span class="cp">#include</span> <span class="cpf">&lt;CL/sycl.hpp&gt;</span><span class="cp"></span>
+  <span class="k">namespace</span> <span class="n">sycl</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="p">;</span>
+
+  <span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">char</span><span class="o">**</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">sycl</span><span class="o">::</span><span class="n">queue</span> <span class="n">q</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">default_selector</span><span class="p">{});</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="mi">16</span><span class="o">&gt;</span> <span class="n">a_data</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="mi">16</span><span class="o">&gt;</span> <span class="n">b_data</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">iota</span><span class="p">(</span><span class="n">a_data</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">a_data</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">iota</span><span class="p">(</span><span class="n">b_data</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">b_data</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="mi">1</span><span class="p">);</span>
+
+    <span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span> <span class="n">a</span><span class="p">(</span><span class="n">a_data</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">16</span><span class="p">));</span>
+    <span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span> <span class="n">b</span><span class="p">(</span><span class="n">b_data</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">16</span><span class="p">));</span>
+    <span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span> <span class="n">c</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">16</span><span class="p">));</span>
+    <span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span> <span class="n">d</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">16</span><span class="p">));</span>
+
+    <span class="o">&lt;&lt;</span><span class="n">Read</span> <span class="n">A</span><span class="p">,</span> <span class="n">Write</span> <span class="n">B</span><span class="o">&gt;&gt;</span>
+
+    <span class="o">&lt;&lt;</span><span class="n">Read</span> <span class="n">A</span><span class="p">,</span> <span class="n">Write</span> <span class="n">C</span><span class="o">&gt;&gt;</span>
+
+    <span class="o">&lt;&lt;</span><span class="n">Read</span> <span class="n">B</span> <span class="n">and</span> <span class="n">C</span><span class="p">,</span> <span class="n">Write</span> <span class="n">D</span><span class="o">&gt;&gt;</span>
+
+    <span class="o">&lt;&lt;</span><span class="n">Write</span> <span class="n">D</span><span class="o">&gt;&gt;</span>
+
+    <span class="k">auto</span> <span class="n">ad</span> <span class="o">=</span> <span class="n">d</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read</span><span class="o">&gt;</span><span class="p">();</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">16</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">ad</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;&lt;</span> <span class="s">" "</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>In this example, we submit four command groups. Their operations are not particularly important. What matters is which buffers they write to and read from:</p>
+<p><strong>Read A, Write B</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">q</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">auto</span> <span class="n">aa</span> <span class="o">=</span> <span class="n">a</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
+      <span class="k">auto</span> <span class="n">ab</span> <span class="o">=</span> <span class="n">b</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">discard_write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
+
+      <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">kernelA</span><span class="o">&gt;</span><span class="p">(</span>
+    <span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">16</span><span class="p">),</span>
+    <span class="p">[</span><span class="o">=</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">item</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">ab</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="n">aa</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="p">}</span> <span class="p">);</span>
+    <span class="p">}</span> <span class="p">);</span>
+</pre></div>
+</code></pre>
+<p><strong>Read A, Write C</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">q</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">auto</span> <span class="n">aa</span> <span class="o">=</span> <span class="n">a</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
+      <span class="k">auto</span> <span class="n">ac</span> <span class="o">=</span> <span class="n">c</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">discard_write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
+
+      <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">kernelB</span><span class="o">&gt;</span><span class="p">(</span>
+    <span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">16</span><span class="p">),</span>
+    <span class="p">[</span><span class="o">=</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">item</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">ac</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="n">aa</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="p">}</span> <span class="p">);</span>
+    <span class="p">}</span> <span class="p">);</span>
+</pre></div>
+</code></pre>
+<p><strong>Read B and C, Write D</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">q</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">auto</span> <span class="n">ab</span> <span class="o">=</span> <span class="n">b</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
+      <span class="k">auto</span> <span class="n">ac</span> <span class="o">=</span> <span class="n">c</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
+      <span class="k">auto</span> <span class="n">ad</span> <span class="o">=</span> <span class="n">d</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">discard_write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
+
+      <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">kernelC</span><span class="o">&gt;</span><span class="p">(</span>
+    <span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">16</span><span class="p">),</span>
+    <span class="p">[</span><span class="o">=</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">item</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">ad</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="n">ab</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">+</span> <span class="n">ac</span><span class="p">[</span><span class="n">item</span><span class="p">];</span>
+    <span class="p">}</span> <span class="p">);</span>
+    <span class="p">}</span> <span class="p">);</span>
+</pre></div>
+</code></pre>
+<p><strong>Write D</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">q</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">auto</span> <span class="n">ad</span> <span class="o">=</span> <span class="n">d</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read_write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
+
+      <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">kernelD</span><span class="o">&gt;</span><span class="p">(</span>
+    <span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">16</span><span class="p">),</span>
+    <span class="p">[</span><span class="o">=</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">item</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">ad</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">4</span><span class="p">;</span>
+    <span class="p">}</span> <span class="p">);</span>
+    <span class="p">}</span> <span class="p">);</span>
+</pre></div>
+</code></pre>
+<p>As we can see, some buffers are reused between the kernels with different access modes, while others are used independently. The order in which the SYCL runtime schedules the kernels will mirror this usage.</p>
+<p>The first two kernels will be scheduled concurrently, because they do not depend on each other. Both of them read from the same buffer (<strong>A</strong>), but they do not write to it. Since concurrent reading is not a data race, that part is independent. Then, they also write to different buffers, so writes do not conflict. The runtime is aware of all this and will exploit it for maximum parallelism.</p>
+<p>The third kernel is not independent - it reads from the buffers <strong>B</strong> and <strong>C</strong> into which the first two kernels write. Hence, it will wait for them to finish and be scheduled immediately after that.</p>
+<p>Finally, the fourth kernel does not read anything that a previous kernel wrote, but it does write to the same data - the <strong>D</strong> buffer. Since mutating shared state in parallel is a data race, this kernel has to wait for the third one to finish and will execute only then.</p>
+<p>Our program outputs the correct results:</p>
+<p>1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16</p>
+<p>In this case we have a well-defined execution order, since all kernels are submitted from the same thread. What if we have a multi-threaded application, with <code>submit</code> calls being made on several threads? The queue is thread-safe, and the order in which kernels are executed will be decided by the order of submission. If you want to guarantee a specific order between kernels submitted from different threads, you have to synchronize this manually and make <code>submit</code> calls in the right order - otherwise it could be random, depending on which thread happens to execute its operation on the queue first.</p></main>
+            </body>
+        </html>
+        

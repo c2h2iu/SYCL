@@ -1,0 +1,68 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Parallelism</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Parallelism</h1>
+                <main>
+<p>So far, we have defined several important concepts and performed a few simple operations on the device side. However, the way in which we have been executing kernels so far was quite ignorant of a parallel devices architecture and thus wasteful. It is now time to unleash the full power of device parallelism. To do that, we first have to understand roughly how a GPU is structured.</p>
+<p>A modern GPU has a few more "cores" than the typical CPU - around 16 or 32. These are sometimes called 'compute units'. Moreover, a compute unit is not quite like a CPU core. While CPUs are general-purpose and can easily execute a wide variety of instructions, GPUs are really only fit for large numeric computations. That is because unlike a CPU core, a compute unit is kind of like a very wide SIMD unit. It can execute the same operation over a large array of elements in a vectorized manner. When we multiply the SIMD width of every compute unit by their amount, we get around 2048 operations that can execute in parallel - much more than on a CPU.</p>
+<p>Of course, SYCL code can run on many more kinds of devices than just GPUs. In order to support this, it provides an abstraction over the design of parallel hardware. A single execution of a given kernel is organised into <strong>work-groups</strong> and <strong>work-items</strong>.</p>
+<p>A <strong>work-item</strong> is a single instance of a running kernel, kind of (but not quite) like a CPU thread. Each work-item is uniquely identified by a <strong>global id</strong>. Ids are not necessarily single values - they might be one, two, or three-dimensional. In the multi-dimensional cases, an id is a 'point' in an index space, with each point corresponding to a work-item.</p>
+<p>Work-items are then organised into <strong>work-groups</strong>. Each work-group contains the same number of work-items and is uniquely identified by a <strong>work-group id</strong>. Additionally, within a work-group a work-item can be identified by its <strong>local id</strong>, and the combination of a local id with a work-group id is equivalent to the global id. The number of work-items is the <strong>global size</strong> and the number of work-items within a work-group is the <strong>local size</strong>.</p>
+<p>Roughly speaking, a work-group corresponds to a single parallel device core (e.g. GPU compute unit), while the work-items within it correspond to elements in the per-core SIMD array. This has huge implications on how we should write our code to achieve best performance. The vectorized unit performs best when all elements are inputs to the same computation. For example, multiplying the entire array by a constant is blazing fast. On the other hand, divergent computation might be slower than on a CPU. For example, if the kernel contains an <code>if</code> statement that causes some number of work-items within a work-group to take one branch and the rest to take another, the parallel device will have to deal with the divergence in a non-optimal way. A GPU, for example, might execute the same bit of code twice, first with all SIMD units taking one branch and then with all of them taking the other branch. The results would be masked to only store the correct version for a given SIMD unit. We dont want this to happen, since it effectively doubles the runtime of a particular path.</p>
+<p>Another way to think about it is to imagine that a work-group is a squad of work-item soldiers marching in a single direction. As long as they are in sync, the march progresses correctly. However, as soon as some of the soldiers change direction, the others will run into them and cause everyone to fall over.</p>
+<p>On the other hand, its okay for different work-groups to take different paths through the kernel, since they are independent. For this reason, if we need to have divergent computation, it is best if we can pick our work-groups such that the divergence is on the level of work-groups rather than work-items.</p>
+<p>In this chapter we will encrypt a string with ROT-13 (do not actually do this if you need proper encryption) in parallel.</p>
+<p><strong>Parallel encrypt</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+   <span class="cp">#include</span> <span class="cpf">&lt;cstring&gt;</span><span class="cp"></span>
+   <span class="cp">#include</span> <span class="cpf">&lt;vector&gt;</span><span class="cp"></span>
+   <span class="cp">#include</span> <span class="cpf">&lt;CL/sycl.hpp&gt;</span><span class="cp"></span>
+
+   <span class="k">namespace</span> <span class="n">sycl</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="p">;</span>
+
+   <span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">char</span><span class="o">**</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="n">text</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc interdum in erat non scelerisque."</span><span class="p">;</span>
+    <span class="k">const</span> <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">text</span><span class="p">);</span>
+
+    <span class="n">sycl</span><span class="o">::</span><span class="n">queue</span> <span class="n">queue</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">default_selector</span><span class="p">{});</span>
+
+    <span class="p">{</span>
+      <span class="o">&lt;&lt;</span><span class="n">Submit</span> <span class="n">kernel</span><span class="o">&gt;&gt;</span>
+    <span class="p">}</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">text</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>For data storage, we initialize an array with the string that we want to encrypt.</p>
+<p><strong>Submit kernel</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">char</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span> <span class="n">buf</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="n">len</span><span class="p">));</span>
+  <span class="n">queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">auto</span> <span class="n">acc</span> <span class="o">=</span> <span class="n">buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read_write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
+
+      <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">parrot13</span><span class="o">&gt;</span><span class="p">(</span>
+    <span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="n">len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="p">[</span><span class="o">=</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">item</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kt">size_t</span> <span class="n">id</span> <span class="o">=</span> <span class="n">item</span><span class="p">.</span><span class="n">get_linear_id</span><span class="p">();</span>
+      <span class="c1">// reference https://en.wikipedia.org/wiki/ROT13</span>
+      <span class="k">auto</span> <span class="k">const</span> <span class="n">c</span> <span class="o">=</span> <span class="n">acc</span><span class="p">[</span><span class="n">id</span><span class="p">];</span>
+      <span class="n">acc</span><span class="p">[</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">c</span><span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="o">~</span><span class="p">(</span><span class="o">~</span><span class="n">c</span><span class="o">|</span><span class="mi">32</span><span class="p">)</span><span class="o">/</span><span class="mi">13</span><span class="o">*</span><span class="mi">2</span><span class="o">-</span><span class="mi">11</span><span class="p">)</span><span class="o">*</span><span class="mi">13</span><span class="p">);</span>
+    <span class="p">}</span> <span class="p">);</span>
+    <span class="p">}</span> <span class="p">);</span>
+</pre></div>
+</code></pre>
+<p>After the typical queue setup, in our command group we submit a kernel using <code>parallel_for</code>. As the name suggests, this function will execute the kernel in parallel on a number of work-items. There are several variants of this function. Here, we use the one with a single <code>range&lt;n&gt;</code> parameter. The range specifies the global size (we use <code>len - 1</code> since we dont want to flip the newline character), but the local size is left unspecified. The data we are manipulating is not grouped in any significant way. For this reason, it is best to leave the choice of local size up to the runtime, which should find an optimal value. As a rule of thumb, only specify the local size if you need to control behaviour on the work-group level (e.g. for divergence) or when you know the best performing values for a particular piece of hardware.</p>
+<p>Corresponding to the <code>range&lt;n&gt;</code> parameter is the <code>item&lt;n&gt;</code> argument we receive in the kernel lambda. It makes only the global id available. The method <code>item::get_linear_id</code> combines an id in index space into a single <code>size_t</code> value. In the one-dimensional case, these values are the same. We then transform each letter with the encryption algorithm and write that back into the buffer.</p>
+<p>And the result is our secret code:</p>
+<p>Yberz vcfhz qbybe fvg nzrg, pbafrpgrghe nqvcvfpvat ryvg. Ahap vagreqhz va reng aba fpryrevfdhr.</p></main>
+            </body>
+        </html>
+        

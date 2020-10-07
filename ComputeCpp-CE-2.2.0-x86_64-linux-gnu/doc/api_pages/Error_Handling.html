@@ -1,0 +1,68 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Error Handling</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Error Handling</h1>
+                <main>
+<p>Before diving into more complicated examples, we will cover error handling. That way we can make sure that we dont ignore any errors later on.</p>
+<p>In general, there are two kinds of errors in SYCL. These are <strong>synchronous</strong> and <strong>asynchronous</strong>. Synchronous errors are classical C++ exceptions, thrown whenever the user calls a function with wrong arguments. These can be caught with a <code>try..catch</code> block.</p>
+<p>Asynchronous errors, on the other hand, are those that describe faults in asynchronously executed code, for example inside a command group or a kernel. Since they can occur in a different stackframe, asynchronous error cannot be propagated up the stack. By default, they are considered 'lost'. The way in which we can retrieve them is by providing an error handler function.</p>
+<p><strong>Error handling</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;CL/sycl.hpp&gt;</span><span class="cp"></span>
+  <span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+
+  <span class="k">namespace</span> <span class="n">sycl</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="p">;</span>
+
+  <span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">char</span><span class="o">**</span><span class="p">)</span> <span class="p">{</span>
+    <span class="o">&lt;&lt;</span><span class="n">Create</span> <span class="n">exception</span> <span class="n">handler</span><span class="o">&gt;&gt;</span>
+
+    <span class="o">&lt;&lt;</span><span class="n">Execute</span> <span class="n">with</span> <span class="n">wrong</span> <span class="n">parameters</span><span class="o">&gt;&gt;</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+</pre></div>
+</code></pre>
+<p><strong>Create exception handler</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">exception_handler</span> <span class="o">=</span> <span class="p">[]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">exception_list</span> <span class="n">exceptions</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">exception_ptr</span> <span class="k">const</span><span class="o">&amp;</span> <span class="nl">e</span> <span class="p">:</span> <span class="n">exceptions</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">try</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">rethrow_exception</span><span class="p">(</span><span class="n">e</span><span class="p">);</span>
+      <span class="p">}</span> <span class="k">catch</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">exception</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Caught asynchronous SYCL exception:</span><span class="se">\n</span><span class="s">"</span>
+          <span class="o">&lt;&lt;</span> <span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">};</span>
+</pre></div>
+</code></pre>
+<p>The handler is a function object that accepts an <code>exception_list</code> [link] parameter. The parameter is an iterable list of <code>std::exception_ptr</code> objects. In our simple handler, we rethrow the pointer (there is no way to read from it directly), catch it, and output the exception description.</p>
+<p><strong>Execute with wrong parameters</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">sycl</span><span class="o">::</span><span class="n">queue</span> <span class="n">queue</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">default_selector</span><span class="p">{},</span> <span class="n">exception_handler</span><span class="p">);</span>
+
+  <span class="n">queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">range</span> <span class="o">=</span> <span class="n">sycl</span><span class="o">::</span><span class="n">nd_range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
+    <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">invalid_kernel</span><span class="o">&gt;</span><span class="p">(</span><span class="n">range</span><span class="p">,</span> <span class="p">[</span><span class="o">=</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">nd_item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">{});</span>
+  <span class="p">});</span>
+
+  <span class="k">try</span> <span class="p">{</span>
+    <span class="n">queue</span><span class="p">.</span><span class="n">wait_and_throw</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">exception</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Caught synchronous SYCL exception:</span><span class="se">\n</span><span class="s">"</span>
+          <span class="o">&lt;&lt;</span> <span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+  <span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>Then, we setup a default queue and supply it with an invalid kernel. The reason why this code is erroneous is unimportant for now (it has to do with work-group sizes). Finally, we call <code>queue::wait_and_throw</code> [link]. This function blocks and waits for all enqueued tasks to finish. Then, it sends all asynchronous exceptions to our handler. Additionally, it is possible, but very unlikely, for it to directly throw a synchronous exception. For completeness, we also catch these.</p>
+<p>You might be wondering why the exception handler has to take an exception list rather than a single exception as the argument. A single <code>wait_and_throw</code> request might report multiple exceptions, so it is convenient to group them into a list object. Each request has a single list corresponding to it, so the user is not burdened with manually checking which errors are in which group.</p>
+<p>The output we get back on the machine building this guide is:</p>
+<p>SYCL Exception: Error: [ComputeCpp:RT0301] Work-group size is invalid (Local size exceeds the global work group size)
+Caught asynchronous SYCL exception:
+Error: [ComputeCpp:RT0301] Work-group size is invalid (Local size exceeds the global work group size)</p></main>
+            </body>
+        </html>
+        

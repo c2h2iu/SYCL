@@ -1,0 +1,94 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Limitations</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Limitations</h1>
+                <main>
+<p>After reading all the previous sections you should have a strong foundation in how SYCL can be used to accelerate your code. Now is a good time to talk about the limitations imposed on kernel code - unfortunately not every feature of C++ can be used. This is primarily because of hardware limitations - accelerators differ in their architecture and do not support the same kinds of machine instructions as CPUs.</p>
+<p>The SYCL specification lists the following features as unavailable in kernels:
+<em> run time type information (RTTI)
+</em> exceptions
+<em> recursion<br/>
+</em> virtual function calls</p>
+<p>Fortunately we can work around some of these restrictions in the majority of cases. Instead of exceptions, you can use C-style error return values. Tail-recursive functions can be turned into loops with tail call elimination. General recursion might not be possible, though. Finally, as long as all the child classes are known, virtual function calls can be replaced with a type enumeration:</p>
+<p><strong>Pseudo-virtual call using type enumeration</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+
+<span class="k">enum</span> <span class="k">class</span> <span class="nc">type_t</span> <span class="p">{</span>
+  <span class="n">CHILD_A</span><span class="p">,</span>
+  <span class="n">CHILD_B</span><span class="p">,</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">Base</span> <span class="p">{</span>
+  <span class="n">type_t</span> <span class="n">type</span><span class="p">;</span>
+
+  <span class="n">Base</span><span class="p">(</span><span class="n">type_t</span> <span class="n">type</span><span class="p">)</span>
+    <span class="o">:</span> <span class="n">type</span><span class="p">(</span><span class="n">type</span><span class="p">)</span> <span class="p">{}</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="nl">ChildA</span> <span class="p">:</span> <span class="k">public</span> <span class="n">Base</span> <span class="p">{</span>
+  <span class="n">ChildA</span><span class="p">()</span>
+    <span class="o">:</span> <span class="n">Base</span><span class="p">(</span><span class="n">type_t</span><span class="o">::</span><span class="n">CHILD_A</span><span class="p">)</span> <span class="p">{}</span>
+
+  <span class="kt">void</span> <span class="n">pseudo_virtual</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"A calling."</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="nl">ChildB</span> <span class="p">:</span> <span class="k">public</span> <span class="n">Base</span> <span class="p">{</span>
+  <span class="n">ChildB</span><span class="p">()</span>
+    <span class="o">:</span> <span class="n">Base</span><span class="p">(</span><span class="n">type_t</span><span class="o">::</span><span class="n">CHILD_B</span><span class="p">)</span> <span class="p">{}</span>
+
+  <span class="kt">void</span> <span class="n">pseudo_virtual</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"B calling."</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">void</span> <span class="nf">call_pv</span><span class="p">(</span><span class="n">Base</span><span class="o">*</span> <span class="n">base</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">base</span><span class="o">-&gt;</span><span class="n">type</span> <span class="o">==</span> <span class="n">type_t</span><span class="o">::</span><span class="n">CHILD_A</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">static_cast</span><span class="o">&lt;</span><span class="n">ChildA</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">base</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">pseudo_virtual</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="k">static_cast</span><span class="o">&lt;</span><span class="n">ChildB</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">base</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">pseudo_virtual</span><span class="p">();</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>Additionally, there is another technique called the <em>CRTP idiom in C++</em> that allows to express polymorphism in compile-time which results at near-zero performance hit during run-time. You derive the base class from the derived class by forwarding the derived class to the base. The base class can be casted to the correct type, that includes the implementation detials, via <code>static_cast</code> as this is information visible by the compiler. However, this means that the entire interface of the class <strong>must</strong> be declared in the base class.</p>
+<p><strong>Pseudo-virtual call using CRTP (Curiously Recurring Template Pattern)</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">Derived</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">Base</span> <span class="p">{</span>
+  <span class="kt">void</span> <span class="n">pseudo_virtual</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">static_cast</span><span class="o">&lt;</span><span class="n">Derived</span><span class="o">&amp;&gt;</span><span class="p">(</span><span class="o">*</span><span class="k">this</span><span class="p">).</span><span class="n">pseudo_virtual</span><span class="p">();</span>
+  <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="nl">ChildA</span> <span class="p">:</span> <span class="k">public</span> <span class="n">Base</span><span class="o">&lt;</span><span class="n">ChildA</span><span class="o">&gt;</span> <span class="p">{</span>
+  <span class="kt">void</span> <span class="n">pseudo_virtual</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"A calling."</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="nl">ChildB</span> <span class="p">:</span> <span class="k">public</span> <span class="n">Base</span><span class="o">&lt;</span><span class="n">ChildB</span><span class="o">&gt;</span> <span class="p">{</span>
+  <span class="kt">void</span> <span class="n">pseudo_virtual</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"B calling."</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">Derived</span><span class="o">&gt;</span>
+<span class="kt">void</span> <span class="n">call_pv</span><span class="p">(</span><span class="n">Base</span><span class="o">&lt;</span><span class="n">Derived</span><span class="o">&gt;&amp;</span> <span class="n">base</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">base</span><span class="p">.</span><span class="n">pseudo_virtual</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>It is also important to note that CRTP removes the need of using pointer types. If you wish to learn more about CRTP and its uses in SYCL kernels, have a look at our blog post on <a href="" title="https://www.codeplay.com/portal/07-12-19-enabling-polymorphism-in-sycl-using-the-cpp-idiom-crtp">Enabling Polymorphism in SYCL using CRTP</a>.</p>
+<p>Of course, this is not always the case - we might have an unkown type hierarchy. Unfortunately, at the moment all device code has to be contained within a single translation unit. In practice, this means that kernel code can only be split into headers - not separately compiled .cpp files.</p></main>
+            </body>
+        </html>
+        

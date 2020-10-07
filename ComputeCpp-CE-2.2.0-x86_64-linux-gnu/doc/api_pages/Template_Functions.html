@@ -1,0 +1,74 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Template Functions</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Template Functions</h1>
+                <main>
+<p>SYCL allows us to easily leverage the power of C++ template metaprogramming in device code. Most valid compile-time constructs will work in a kernel (with some restrictions, described in "Limitations"). This means that we can define generic command groups, kernels, use functional programming concepts, and offload a lot of work to the compiler.</p>
+<p>In this section we will create and execute a generic kernel function object</p>
+<p><strong>Define ConstantAdder</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Acc</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">N</span><span class="o">&gt;</span>
+  <span class="k">class</span> <span class="nc">ConstantAdder</span> <span class="p">{</span>
+  <span class="k">public</span><span class="o">:</span>
+    <span class="n">ConstantAdder</span><span class="p">(</span><span class="n">Acc</span> <span class="n">accessor</span><span class="p">,</span> <span class="n">T</span> <span class="n">val</span><span class="p">)</span>
+      <span class="o">:</span> <span class="n">accessor</span><span class="p">(</span><span class="n">accessor</span><span class="p">)</span>
+      <span class="p">,</span> <span class="n">val</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="p">{}</span>
+
+    <span class="kt">void</span> <span class="k">operator</span><span class="p">()</span> <span class="p">()</span> <span class="p">{</span>
+      <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">N</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+         <span class="n">accessor</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">val</span><span class="p">;</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+
+  <span class="k">private</span><span class="o">:</span>
+    <span class="n">Acc</span> <span class="n">accessor</span><span class="p">;</span>
+    <span class="k">const</span> <span class="n">T</span> <span class="n">val</span><span class="p">;</span>
+  <span class="p">};</span>
+</pre></div>
+</code></pre>
+<p>We first define a <code>ConstantAdder</code> class. The class overloads <code>operator()</code>, so it is a function object. It performs addition of a value to every element of an object, given that the object provides <code>operator[]</code>.</p>
+<p><strong>Execute generic function</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+  <span class="cp">#include</span> <span class="cpf">&lt;array&gt;</span><span class="cp"></span>
+  <span class="cp">#include</span> <span class="cpf">&lt;algorithm&gt;</span><span class="cp"></span>
+
+  <span class="cp">#include</span> <span class="cpf">&lt;CL/sycl.hpp&gt;</span><span class="cp"></span>
+
+  <span class="k">namespace</span> <span class="n">sycl</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="p">;</span>
+
+  <span class="o">&lt;&lt;</span><span class="n">Define</span> <span class="n">ConstantAdder</span><span class="o">&gt;&gt;</span>
+
+  <span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">char</span><span class="o">**</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="mi">4</span><span class="o">&gt;</span> <span class="n">vals</span> <span class="o">=</span> <span class="p">{{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span> <span class="p">}};</span>
+
+    <span class="n">sycl</span><span class="o">::</span><span class="n">queue</span> <span class="n">queue</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">default_selector</span><span class="p">{});</span>
+    <span class="p">{</span>
+      <span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span> <span class="n">buf</span><span class="p">(</span><span class="n">vals</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">4</span><span class="p">));</span>
+      <span class="n">queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">auto</span> <span class="n">acc</span> <span class="o">=</span> <span class="n">buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read_write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
+
+      <span class="n">cgh</span><span class="p">.</span><span class="n">single_task</span><span class="p">(</span><span class="n">ConstantAdder</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="k">decltype</span><span class="p">(</span><span class="n">acc</span><span class="p">),</span> <span class="mi">4</span><span class="o">&gt;</span><span class="p">(</span><span class="n">acc</span><span class="p">,</span> <span class="mi">1</span><span class="p">));</span>
+    <span class="p">}</span> <span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">for_each</span><span class="p">(</span><span class="n">vals</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">vals</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="p">[]</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="p">)</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">i</span> <span class="o">&lt;&lt;</span> <span class="s">" "</span><span class="p">;</span> <span class="p">}</span> <span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>In <code>main</code>, after the typical setup, we create a single buffer to manage four integer values. Note that we can use <code>int</code>, which is an unsized type - its width can differ from platform to platform. It is, however, safe to use, since the size is decided by the host compiler. The device compiler will then just use the same size, which allows for safe transfers of data between the host and devices.</p>
+<p>In the command group, we create an instance of our <code>ConstantAdder</code> with a value of <code>1</code> and pass that to <code>single_task</code>. Notice that since our function object is now a full-fledged class, we do not have to make up an artificial template parameter, since the kernel name is known - it is exacly the name of the function object type <code>ConstantAdder</code>. The output of the program is as expected:</p>
+<p>2 3 4 5</p>
+<p>Of course, in this case a simple lambda kernel would have worked just as well. In general though, using your own classes gives you more flexibility and expressive power, at the cost of verbosity.</p>
+<p>Lambdas can also be captured by the command group scope in SYCL. This is a useful feature, for example, when needed to pass a function pointer which is restricted in SYCL. Additionally, the C++14 <code>generic lambdas</code> that improve on C++11 lambdas can also be used with ComputeCpp. If you are interested to learn more about this, you can have a look at our engineering blog post on <a href="https://www.codeplay.com/portal/06-11-19-sycl-cpp-generic-interfaces-with-generic-lambdas">Generic Lambdas with SYCL</a>.</p>
+<p><strong>Note</strong> that there is no guarantee C++14 language features that are <strong>supported by ComputeCpp</strong> will also work across other SYCL implementations since the minimum requirement for SYCL v1.2.1 is C++11.</p></main>
+            </body>
+        </html>
+        

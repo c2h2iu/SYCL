@@ -1,0 +1,172 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Hardware Support Tool</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Hardware Support Tool</h1>
+                <main>
+<h2>Synopsis</h2>
+<p>The computecpp_info(1) tool displays information about the OpenCL platforms that are available, and which can be used with ComputeCpp.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="n">computecpp</span><span class="err">\</span><span class="n">_info</span> <span class="err">\</span><span class="p">[</span><span class="n">OPTION</span><span class="err">\</span><span class="p">]</span>
+</pre></div>
+</code></pre>
+<h2>Options</h2>
+<p><code>-h --help</code>
+Lists the commands available</p>
+<p><code>-v --verbose</code>
+Verbose output showing additional information such as OpenCL extensions </p>
+<p><code>-t --target</code>
+Specifies the filter for searching devices in the form [platform]:[device_type]. 
+The option --target requires an argument in the format [option]=[argument], e.g. --target platform=intel.</p>
+<p><code>--dump-device-compiler-flags</code>
+Outputs the flags required by the device compiler </p>
+<p><code>--dump-is-supported</code>
+Checks whether the current platform is supported. </p>
+<p><code>--dump-version</code>
+Prints the ComputeCpp version number as Major.Minor Target Options</p>
+<p><code>--use-spirv</code>
+Enables SPIR-V support (this disables SPIR support)</p>
+<p><code>--use-ptx</code>
+Enables experimental PTX support (this disables SPIR support)</p>
+<h2>Target Options</h2>
+<p>The option <code>--target</code> requires an argument in the format <code>[option\]=\[argument\]</code>, e.g. ``--target platform=intel```.</p>
+<p>The following table summarizes the platform and device_type targets:</p>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Target</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>platform</td>
+<td>amd</td>
+<td>AMD(R) platform</td>
+</tr>
+<tr>
+<td>platform</td>
+<td>intel</td>
+<td>Intel(R) platform</td>
+</tr>
+<tr>
+<td>platform</td>
+<td>*, any or <empty></empty></td>
+<td>All platforms</td>
+</tr>
+<tr>
+<td>:device_type</td>
+<td>gpu</td>
+<td>GPU devices</td>
+</tr>
+<tr>
+<td>:device_type</td>
+<td>cpu</td>
+<td>CPU devices</td>
+</tr>
+<tr>
+<td>:device_type</td>
+<td>accel</td>
+<td>Accelerator devices</td>
+</tr>
+<tr>
+<td>:device_type</td>
+<td>*, any or <empty></empty></td>
+<td>All devices</td>
+</tr>
+<tr>
+<td>:device_type</td>
+<td><other></other></td>
+<td>Default device</td>
+</tr>
+</tbody>
+</table>
+<p>Here are some example ComputeCpp targets:</p>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Selected</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>intel</td>
+<td>Default device on Intel(R) platform</td>
+</tr>
+<tr>
+<td>intel:*</td>
+<td>All devices on Intel platform</td>
+</tr>
+<tr>
+<td>:cpu</td>
+<td>All CPU devices on any platform</td>
+</tr>
+<tr>
+<td>amd:gpu</td>
+<td>All GPU devices on AMD(R) platform</td>
+</tr>
+</tbody>
+</table>
+<p>More examples of invocation:</p>
+<pre><code><div class="highlight"><pre><span></span><span class="n">computecpp_info</span> <span class="o">--</span><span class="n">target</span><span class="o">=</span><span class="n">intel</span>
+<span class="n">computecpp_info</span> <span class="o">--</span><span class="n">target</span><span class="o">=</span><span class="nl">amd</span><span class="p">:</span><span class="n">cpu</span>
+<span class="n">computecpp_info</span> <span class="o">--</span><span class="n">target</span><span class="o">=:</span><span class="n">cpu</span>
+</pre></div>
+</code></pre>
+<h2>Supported Devices</h2>
+<p><code>computecpp_info</code> reports whether the system where it is running is supported
+by the ComputeCpp Package.
+This tool checks for availability of:</p>
+<ul>
+<li>Supported system libraries (i.e, libstdC{pp})</li>
+<li>Supported operating system</li>
+<li>Supported OpenCL Platform Driver</li>
+<li>SPIR support</li>
+<li>In the case of CPU devices, relevant vectorization hardware support
+  (e.g, SSE4.1 on Intel CPU devices)</li>
+</ul>
+<p>The support status is shown before device attributes are listed
+and can be either <em>YES</em>, <em>UNTESTED</em> or <em>NO</em> with an additional explanation.
+<em>YES</em> means the device running that driver on that OS has been tested by
+Codeplay Software Ltd.
+<em>UNTESTED</em> indicates the device has not been tested
+- it is still possible the device will work with ComputeCpp,
+but ComputeCpp support may not be able to provide detailed answers to problems.
+<em>NO</em> indicates that the device does not support SPIR,
+which means that ComputeCpp will not be able to run on this device.
+Please refer to the <em>ComputeCpp Platform Support Notes</em> for details
+on potential issues with certain device drivers.</p>
+<p>Note that <em>computecpp_info</em> does not check for SPIR-V or PTX support on drivers,
+as this is currently an experimental feature.
+This means that some drivers that support SPIR-V or PTX may appear as unsupported
+or untested. </p>
+<h2>Examples</h2>
+<h3>Retrieving basic information</h3>
+<p>computecpp_info provides dump flags which produce basic information using
+minimal output, intended to be used as output for user scripts or build tools.</p>
+<pre><code><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">dump</span><span class="o">-</span><span class="n">version</span><span class="o">*</span> <span class="n">returns</span> <span class="n">the</span> <span class="n">version</span> <span class="n">of</span> <span class="n">ComputeCpp</span><span class="p">.</span>
+</pre></div>
+</code></pre>
+<p>The <code>--dump-device-compiler-flags</code> outputs the flags used by the device
+compiler to build SYCL code:</p>
+<pre><code><div class="highlight"><pre><span></span><span class="n">computecpp_info</span> <span class="o">--</span><span class="n">dump</span><span class="o">-</span><span class="n">device</span><span class="o">-</span><span class="n">compiler</span><span class="o">-</span><span class="n">flags</span> <span class="o">-</span><span class="n">O2</span> <span class="o">-</span><span class="n">mllvm</span> <span class="o">-</span><span class="kr">inline</span><span class="o">-</span><span class="n">threshold</span><span class="o">=</span><span class="mi">1000</span> <span class="o">-</span><span class="n">emit</span><span class="o">-</span><span class="n">llvm</span>
+</pre></div>
+</code></pre>
+<p>The option <code>--dump-is-supported</code> will return <em>YES</em>, <em>UNTESTED</em> or <em>NO</em>
+indicating if the platform is supported.
+The platform is supported if at least one device (using a specific driver)
+has been tested by Codeplay Software Ltd.
+<em>NO</em> will only be returned if none of the devices in the system support SPIR.</p>
+<pre><code><div class="highlight"><pre><span></span><span class="n">computecpp_info</span> <span class="o">--</span><span class="n">dump</span><span class="o">-</span><span class="n">is</span><span class="o">-</span><span class="n">supported</span>
+<span class="n">YES</span>
+</pre></div>
+</code></pre></main>
+            </body>
+        </html>
+        

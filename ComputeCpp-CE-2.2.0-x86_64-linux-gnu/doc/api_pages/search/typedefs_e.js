@@ -1,0 +1,4 @@
+var searchData=
+[
+  ['reference',['reference',['../classcl_1_1sycl_1_1buffer.html#a8e7370c9432a80baa8cdea0d183ca81f',1,'cl::sycl::buffer::reference()'],['../classcl_1_1sycl_1_1buffer_3_01const_01_t_00_01dimensions_00_01_allocator_t_01_4.html#aca53a39c8675325c188fc5879187d636',1,'cl::sycl::buffer&lt; const T, dimensions, AllocatorT &gt;::reference()'],['../classcl_1_1sycl_1_1exception__list.html#a180465aaf8b1b8acd291ff1a78582af7',1,'cl::sycl::exception_list::reference()'],['../classcl_1_1sycl_1_1experimental_1_1usm__allocator.html#a0bef36baba6b6b7b65878a639c1bd15d',1,'cl::sycl::experimental::usm_allocator::reference()'],['../classcl_1_1sycl_1_1multi__ptr.html#a088a89cd28f0b58d09cbe0be260184c7',1,'cl::sycl::multi_ptr::reference()'],['../classcl_1_1sycl_1_1multi__ptr.html#aa57c65c2d880bc547e672559b22e7bf5',1,'cl::sycl::multi_ptr::reference()']]]
+];

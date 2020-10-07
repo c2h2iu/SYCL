@@ -1,0 +1,707 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Memory Model</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Memory Model</h1>
+                <main>
+<p>GPUs employ a similar memory hierarchy to the one used in CPU devices, 
+including multiple levels of memory with different latency, bandwidths, 
+and capacity.  The lower the memory latency is, the closer the memory 
+position is to the processor, and the lower its capacity is. 
+In the following sections we explain how these levels of memory are 
+exposed in both CUDA and SYCL.</p>
+<h2>CUDA Memory Model</h2>
+<p>The CUDA memory model is explicit. This will expose the full control of memory
+hierarchy to the programmer for allocation, de-allocation and data movement
+between host and device.  CUDA memory allocations are performed using
+<em>cudaMalloc</em> which is equivalent to a <em>malloc</em> function, and returns a pointer
+that is not dereferencable on the host.  The following image represents the
+overall architecture of the CUDA memory model.</p>
+<p><img alt="CUDA memory architecture" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAeEAAAJWCAIAAADgD6gJAAAACXBIWXMAAAsTAAALEwEAmpwYAAAGRmlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDIgNzkuMTYwOTI0LCAyMDE3LzA3LzEzLTAxOjA2OjM5ICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdEV2dD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlRXZlbnQjIiB4bWxuczpwaG90b3Nob3A9Imh0dHA6Ly9ucy5hZG9iZS5jb20vcGhvdG9zaG9wLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgKFdpbmRvd3MpIiB4bXA6Q3JlYXRlRGF0ZT0iMjAxOC0wNi0yMlQxNTowNTowNyswMTowMCIgeG1wOk1ldGFkYXRhRGF0ZT0iMjAxOC0wNi0yMlQxNTowNTowNyswMTowMCIgeG1wOk1vZGlmeURhdGU9IjIwMTgtMDYtMjJUMTU6MDU6MDcrMDE6MDAiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6Y2JlMzA0YmQtMjliMi1iMTQ3LWEyNmYtYmQ0NDg1ZmM2OGJjIiB4bXBNTTpEb2N1bWVudElEPSJhZG9iZTpkb2NpZDpwaG90b3Nob3A6ODk3MGY0MjktNTVkOC0wYzQwLWExYzgtYmI4MmZkOTg3MTEzIiB4bXBNTTpPcmlnaW5hbERvY3VtZW50SUQ9InhtcC5kaWQ6ZDIyM2VlZmMtYmZjNC02ZTQyLTgwYjctMDMxODc0ZjA5ZTczIiBwaG90b3Nob3A6Q29sb3JNb2RlPSIzIiBkYzpmb3JtYXQ9ImltYWdlL3BuZyI+IDx4bXBNTTpIaXN0b3J5PiA8cmRmOlNlcT4gPHJkZjpsaSBzdEV2dDphY3Rpb249ImNyZWF0ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6ZDIyM2VlZmMtYmZjNC02ZTQyLTgwYjctMDMxODc0ZjA5ZTczIiBzdEV2dDp3aGVuPSIyMDE4LTA2LTIyVDE1OjA1OjA3KzAxOjAwIiBzdEV2dDpzb2Z0d2FyZUFnZW50PSJBZG9iZSBQaG90b3Nob3AgQ0MgKFdpbmRvd3MpIi8+IDxyZGY6bGkgc3RFdnQ6YWN0aW9uPSJzYXZlZCIgc3RFdnQ6aW5zdGFuY2VJRD0ieG1wLmlpZDpjYmUzMDRiZC0yOWIyLWIxNDctYTI2Zi1iZDQ0ODVmYzY4YmMiIHN0RXZ0OndoZW49IjIwMTgtMDYtMjJUMTU6MDU6MDcrMDE6MDAiIHN0RXZ0OnNvZnR3YXJlQWdlbnQ9IkFkb2JlIFBob3Rvc2hvcCBDQyAoV2luZG93cykiIHN0RXZ0OmNoYW5nZWQ9Ii8iLz4gPC9yZGY6U2VxPiA8L3htcE1NOkhpc3Rvcnk+IDxwaG90b3Nob3A6RG9jdW1lbnRBbmNlc3RvcnM+IDxyZGY6QmFnPiA8cmRmOmxpPjE5NkYwQTcyMjZFNjNFRTUzMTMxOTRGQkVDNzI2MzM3PC9yZGY6bGk+IDwvcmRmOkJhZz4gPC9waG90b3Nob3A6RG9jdW1lbnRBbmNlc3RvcnM+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+q97n9wAAOMFJREFUeJzt3X18VOWd9/FfeJiZPEwehgSSCZghgQRjQCEg8qgRBdGuglVKRVyXIk3dV3ddu7Z3t7tqu269u20t3b5eNiprcyu0SKk8rBZQkYpBxIBIEpAEEhhIMgGSyYTJ0wwQ7j8unU0TEjAzyVwz+bxf/DE5c86Za67r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"/></p>
+<h3>Register</h3>
+<p>The fastest memory type on NVIDIA GPUs is the register file. Registers are used for
+allocating variables which are private to each threads. Registers are divided
+among warps in an SM. However, there is a very limited number of registers
+available per SM. Therefore, using fewer registers in the kernel
+allows more thread blocks to be executed concurrently on an SM and therefore the
+GPU occupancy and performance will improve. Kernel variables without a type
+qualifier will be allocated in registers. Also, if the array indices are
+constant and can be deduced at compile time, they will be allocated in a
+register as well.</p>
+<h3>Shared memory</h3>
+<p>Variables annotated with <code>__shared__</code> are stored in shared memory. 
+Shared memory is on chip, and it has lower latency than global memory. 
+Also, its memory bandwidth is higher
+than that of global memory. As the name suggests, the shared memory is shared
+among the threads in a thread-block. Each SM has a limited amount of shared
+memory. Using too much shared memory per thread block will decrease the number
+of active warps and can consequently cause a drop in performance.</p>
+<h3>Global memory</h3>
+<p>The global memory is the device memory, visible by all SMs in the GPU
+architecture. Global memory can be allocated in the host code through
+<code>cudaMalloc</code> and freed from host code by <code>cudaFree</code>. The created memory will be
+passed as a pointer to the CUDA device kernel function as a parameter.  Also a
+variable can be declared as global inside the kernel by adding <code>__device__</code>
+qualifier in front of it.</p>
+<h3>Constant memory</h3>
+<p>The constant memory is a read-only device memory that stores variables
+annotated with <code>__constant__</code> attribute.  Constant variables are declared
+statically. Their scope is global and they must be defined outside of the
+kernel as they will be visible to all kernels. For each SM, the constant
+variables will be allocated in a separate cache area dedicated for the constant
+variables. To get the best performance from the constant memory, all threads in
+a warp should read the same memory address.</p>
+<h3>Texture memory</h3>
+<p>The texture memory is a type of read-only device memory. For each SM, there is a
+dedicated read only cache called a texture cache. The texture
+cache is optimized for two-dimensional array access, and is optimized to be accessed 
+by warps accessing two-dimensional data.</p>
+<h3>Local memory</h3>
+<p>The local memory is a virtual concept where the actual location for it is in
+the global memory.  Local memory is used for allocating register spills
+(including large arrays); local structures; variables that cannot fit into
+registers, or arrays whose indices cannot be deduced at compile-time. The
+accesses to local memory are always cached in per-SM L1 caches and per-device L2
+caches for compute capability 3.x.  For devices with compute capability of
+5.x and 6.x, the data accesses are always cached in per-device L2 caches.</p>
+<h2>CUDA memory Management</h2>
+<p>The CUDA programming model uses pointer annotations to indicate where the different
+objects are allocated in memory. When allocating global memory, C-style
+<code>malloc</code> functions can be used to create device-pointers.</p>
+<h3>CUDA memory allocation</h3>
+<p>CUDA memory allocation is triggered by calling :</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cudaError_t</span> <span class="n">cudaMalloc</span><span class="p">(</span><span class="kt">void</span><span class="o">**</span> <span class="n">dev_ptr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">num_bytes</span><span class="p">)</span>
+</pre></div>
+</code></pre>
+<p>This function allocates a device pointer of size <code>num_bytes</code> bytes of global
+memory on the device and returns the address of the allocated memory in <code>dev_ptr</code>.
+The allocated pointer is aligned for any variable type.</p>
+<p>Since the memory model is explicit, it is the user's responsibility to transfer
+the data between host and device using the right memory transfer operations,
+described in the next section.</p>
+<p>A device pointer can be initialized by:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cudaError_t</span> <span class="nf">cudaMemset</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span> <span class="n">dev_ptr</span><span class="p">,</span> <span class="kt">int</span> <span class="n">val</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">num_bytes</span><span class="p">);</span>
+</pre></div>
+</code></pre>
+<p>This function will set the following <code>num_bytes</code> of the memory position starting in 
+<code>dev_ptr</code> with the value of <code>val</code>.</p>
+<p>It is also the user's responsibility to free the memory. Releasing the memory
+can be triggered by calling:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cudaError_t</span> <span class="n">cudaFree</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span> <span class="n">dev_ptr</span><span class="p">)</span>
+</pre></div>
+</code></pre>
+<p>The function will return an error if the memory is not created or has been
+already freed.</p>
+<h3>CUDA memory transfer</h3>
+<p>The following function is used to transfer data from <code>source</code> to <code>destination</code> in
+CUDA:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cudaError_t</span> <span class="nf">cudaMemcpy</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">destination</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">source</span><span class="p">,</span> <span class="kt">size_t</span>
+<span class="n">num_bytes</span><span class="p">,</span> <span class="k">enum</span> <span class="n">cudaMemcpykind</span> <span class="n">kind</span><span class="p">);</span>
+</pre></div>
+</code></pre>
+<p><code>cudaMemcpyKind</code> can be one of the following types:</p>
+<ul>
+<li>
+<p><code>cudaMemcpyHostToHost</code> : determines that the source and destination are host
+  pointers.</p>
+</li>
+<li>
+<p><code>cudaMemcpyHostToDevice</code> : determines that the source is a host pointer and
+  the destination is a device pointer.</p>
+</li>
+<li>
+<p><code>cudaMemcpyDeviceToHost</code> : determines that the source is a device pointer and
+  the destination is a host pointer.</p>
+</li>
+<li>
+<p><code>cudaMemcpyDeviceToDevice</code> : determines that the source and destination are
+  device pointers.</p>
+</li>
+</ul>
+<p>These API entries always block the user thread. 
+If the source and destination does not match the directionality
+determined by <code>kind</code> , the result is undefined. </p>
+<p>The asynchronous version of data transfer can be called using the following
+function:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cudaError_t</span> <span class="n">cudaMemcpyAsync</span> <span class="p">(</span> <span class="kt">void</span><span class="o">*</span> <span class="n">dst</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span><span class="o">*</span> <span class="n">src</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">count</span><span class="p">,</span> <span class="n">cudaMemcpyKind</span> <span class="n">kind</span><span class="p">,</span> <span class="n">cudaStream_t</span> <span class="n">stream</span> <span class="o">=</span> <span class="mi">0</span> <span class="p">)</span>
+</pre></div>
+</code></pre>
+<p>The above function is non-blocking with respect to the host, so calling the
+function may return before completing the copy. The default behaviour of
+the above function is independent from the stream, however, it is possible to
+associate the copy to a stream by passing a non-zero stream argument. When the
+stream is specified using the <code>cudaMemcpyHostToDevice</code> or
+<code>cudaMemcpyDeviceToHost</code> may result in overlapping copy with other operations
+in other streams.</p>
+<h3>CUDA pinned memory</h3>
+<p>By default, CUDA allocated memory is pageable virtual memory. However, CUDA allows programmers
+to pin the host memory. When the host memory is not pinned, the GPU device has
+no control over the host memory in the event of a page fault on the host
+memory.</p>
+<p>Therefore, whenever the data transfer function is called,  the CUDA driver
+allocates a temporary pinned memory and copies the data to the pinned memory and
+then transfers the data from the pinned memory to the device. Once the memory
+has been pinned on the host side, it is not pageable from the host side
+anymore.</p>
+<p>If the user provides pinned host memory, CUDA will not
+allocate temporary pageable memory, eliminating the extra intermediate copy
+operation. To allocate pinned memory in CUDA, the following function can be used:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cudaError_t</span> <span class="n">cudaMallocHost</span><span class="p">(</span><span class="kt">void</span><span class="o">**</span> <span class="n">dev_ptr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">num_bytes</span> <span class="p">)</span>
+</pre></div>
+</code></pre>
+<p><code>num_bytes</code> represents the number of allocated bytes and <code>dev_ptr</code> is the
+actual non-pageable host pointer which is accessible from the device. Since
+this memory is directly accessible from the device, the read/write bandwidth is
+higher than that of pageable memory.</p>
+<h3>CUDA zero-copy memory</h3>
+<p>CUDA zero-copy memory is pinned host memory mapped into the device address
+space.  CUDA zero-copy will avoid the explicit data movement between host
+and device. Although zero-copy improves the PCIe transfer rates, it is required
+to be synchronized whenever data is shared between host and device. Otherwise, the
+behavior is undefined. Zero-copy memory can also be useful when there is not
+enough memory available on device. Zero-copy memory can be allocated by calling
+the following function:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cudaError_t</span> <span class="n">cudaHostAlloc</span><span class="p">(</span><span class="kt">void</span><span class="o">**</span><span class="n">ptr_host</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">num_bytes</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
+</pre></div>
+</code></pre>
+<p>The possible flags are :
+* <code>cudaHostAllocDefault</code> : this is the equivalent of CUDA pinned memory.</p>
+<ul>
+<li>
+<p><code>cudaHostAllocPortable</code> : allocates pinned memory that can be accessed by
+  all CUDA contexts.</p>
+</li>
+<li>
+<p><code>cudaHostAllocWriteCombined</code>: allocates a pinned memory useful to create a buffer
+  to be written by the host and read by the device.</p>
+</li>
+<li>
+<p><code>cudaHostAllocMapped</code> : allocates host memory mapped into the device address
+  space.</p>
+</li>
+</ul>
+<p>Calling the following function provides the device pointer for mapped, pinned memory:</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cudaError_t</span> <span class="nf">cudaHostGetDevicePointer</span><span class="p">(</span><span class="kt">void</span> <span class="o">**</span><span class="n">ptr_device</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr_host</span><span class="p">,</span>
+<span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
+</pre></div>
+</code></pre>
+<p>If an NVIDIA GPU has the ability to access host registered memory at the same 
+virtual address as the CPU, the <code>ptr_device</code> will match the <code>ptr_host</code>
+pointer, meaning that the memory can be accessed on the device by using the
+same host pointer <code>ptr_host</code>. Otherwise, the device pointer may or may not
+match the original host pointer.</p>
+<p>Although zero-copy memory avoids explicit memory transfers between host and
+device by allocating pinned host memory, the kernel performance generally
+suffers from high-latency accesses to zero-copy memory over the PCIe bus.</p>
+<h2>CUDA Memory Access Patterns</h2>
+<p>Global Memory is a logical memory space residing in DRAM. Kernel code accesses
+the data between DRAM and SM on-chip memory using L1 and L2 cache
+as a shortcut whenever it is possible. The data transfer is either a 128-byte or
+32-byte memory transaction. If only L2 cache is used, the access to data will be
+32-byte memory transaction. However, if both L1 and L2 are used the access to
+data would be a 128-byte memory transaction. The L1 cache can be enabled or
+disabled manually, depending on the type of GPU architecture. The memory load
+is considered as cached load if the L1 cache is enabled. The L1 cache can be explicitly enabled or disabled by passing the <code>-Xptxas -dlcm=FLAG</code>, where the
+<code>FLAG</code> can either be <code>ca</code> to enable the L1 cache or <code>cg</code> to disable it.
+However, on some NVIDIA GPU architectures such Kepler K10, K20, and K20x, the
+L1 cache is disabled by default, in order to be used for caching register spills
+to local memory. Knowing the data size in L1
+and L2 cache in CUDA, in the following sub sections we explain the concept of
+aligned memory access and coalesced memory access.</p>
+<h3>Aligned memory access</h3>
+<p>Memory accesses are called <em>aligned</em> when the address referenced in device memory
+is a multiple of 32 bytes for L2 cache or 128 bytes for L1 cache. If the
+memory load is misaligned, the memory bandwidth usage is reduced.</p>
+<h3>Coalesced memory access</h3>
+<p>Memory accesses are called <em>coalesced</em> if all 32 threads in a warp access a
+contiguous chunk of memory. The following image shows coalesced memory access
+by all threads of a warp.</p>
+<p><img alt="Coalesced memory" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAzcAAAF9CAYAAAA5jZb5AAAACXBIWXMAAAsTAAALEwEAmpwYAAAGRmlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDIgNzkuMTYwOTI0LCAyMDE3LzA3LzEzLTAxOjA2OjM5ICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdEV2dD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlRXZlbnQjIiB4bWxuczpwaG90b3Nob3A9Imh0dHA6Ly9ucy5hZG9iZS5jb20vcGhvdG9zaG9wLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgKFdpbmRvd3MpIiB4bXA6Q3JlYXRlRGF0ZT0iMjAxOC0wNi0yMlQxNTowMToyNiswMTowMCIgeG1wOk1ldGFkYXRhRGF0ZT0iMjAxOC0wNi0yMlQxNTowMToyNiswMTowMCIgeG1wOk1vZGlmeURhdGU9IjIwMTgtMDYtMjJUMTU6MDE6MjYrMDE6MDAiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6OTE2ZjNjMmMtOGY4ZC05NzRjLTg1ZjMtOGE0M2UyYmE5NjBjIiB4bXBNTTpEb2N1bWVudElEPSJhZG9iZTpkb2NpZDpwaG90b3Nob3A6MThlMGQ5OTktNmQ5OS1mMzQxLTlmN2UtYWQ3OWYyNTA3ZTViIiB4bXBNTTpPcmlnaW5hbERvY3VtZW50SUQ9InhtcC5kaWQ6YWJjYWM3MjItNTU3NS0yOTQ2LWE5ZDEtZWE5YTEzOTMxMmRiIiBwaG90b3Nob3A6Q29sb3JNb2RlPSIzIiBkYzpmb3JtYXQ9ImltYWdlL3BuZyI+IDx4bXBNTTpIaXN0b3J5PiA8cmRmOlNlcT4gPHJkZjpsaSBzdEV2dDphY3Rpb249ImNyZWF0ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6YWJjYWM3MjItNTU3NS0yOTQ2LWE5ZDEtZWE5YTEzOTMxMmRiIiBzdEV2dDp3aGVuPSIyMDE4LTA2LTIyVDE1OjAxOjI2KzAxOjAwIiBzdEV2dDpzb2Z0d2FyZUFnZW50PSJBZG9iZSBQaG90b3Nob3AgQ0MgKFdpbmRvd3MpIi8+IDxyZGY6bGkgc3RFdnQ6YWN0aW9uPSJzYXZlZCIgc3RFdnQ6aW5zdGFuY2VJRD0ieG1wLmlpZDo5MTZmM2MyYy04ZjhkLTk3NGMtODVmMy04YTQzZTJiYTk2MGMiIHN0RXZ0OndoZW49IjIwMTgtMDYtMjJUMTU6MDE6MjYrMDE6MDAiIHN0RXZ0OnNvZnR3YXJlQWdlbnQ9IkFkb2JlIFBob3Rvc2hvcCBDQyAoV2luZG93cykiIHN0RXZ0OmNoYW5nZWQ9Ii8iLz4gPC9yZGY6U2VxPiA8L3htcE1NOkhpc3Rvcnk+IDxwaG90b3Nob3A6RG9jdW1lbnRBbmNlc3RvcnM+IDxyZGY6QmFnPiA8cmRmOmxpPjE5NkYwQTcyMjZFNjNFRTUzMTMxOTRGQkVDNzI2MzM3PC9yZGY6bGk+IDwvcmRmOkJhZz4gPC9waG90b3Nob3A6RG9jdW1lbnRBbmNlc3RvcnM+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+93ZZVQAAFPZJREFUeJzt3T9rHXt+x/GPNvcJyLBPQK5cbSFDCCGQQi5mQppcZEiVTqq3sooUdyGFVKW2qqRasLhpFuZX2MWFEJYFq9jKlfUILtZDUIqZuTo+V7JkWX+/er1A6M+Zc77H+Ajmrd/MnJWTk5NQz8rKSpKk67qNJFtJDltr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"/></p>
+<h3>Cache line</h3>
+<p>The L1 cache line is 128 bytes mapped to a 128 byte aligned segment in 
+device memory. Therefore, an aligned coalesced access of 4 bytes per thread in
+a warp will perfectly map to the L1 cache line and will be loaded to
+register/shared memory by only one single 128-byte memory transaction.</p>
+<h2>SYCL Memory Model</h2>
+<p>The SYCL memory model is based on the OpenCL memory model, but operates at
+a higher level of abstraction. 
+The key difference of this
+abstraction is the separation of storage from access to memory which is
+expressed through the relationship between memory objects (buffers or images) and accessors.</p>
+<p>From the device point of view, the SYCL 1.2.1 memory model is fundamentally the same as the OpenCL 1.2 memory model.</p>
+<p>From a user's point of view, SYCL creates one memory object in the form of a buffer or image. 
+This memory object can be accessed on the host via a host accessor. 
+The same memory object can be accessed on the device side via a device accessor.</p>
+<p>It is important to understand that the SYCL buffer/image is a host API managing the data allocation and data transfer across variable devices.  By creating an accessor, we create a requirement on the SYCL buffer/image. This requirement can be allocating memory, synchronization between two accessors, and data transfer between host and device.  An accessor is an object telling the SYCL buffer/image where the data needs to be.  If the host accessor is requested from a buffer/image, it implicitly implies that the data needs to be on the host. So the SYCL buffer/image allocates the data on the host.  If a device accessor is requested from a SYCL buffer/image, it implicitly implies that the data needs to be on the device. Therefore, the SYCL buffer/image allocates the memory on
+the device. The SYCL buffer/image also handles the data transfer and
+synchronization, based on the accessor mode. For further information about data transfer using access modes, please refer to the
+SYCL memory transfer section.   </p>
+<h3>Private Memory</h3>
+<p>In SYCL, private memory is a region of memory allocated per work item, 
+visible only to that work item. Private memory is used for kernel parameters
+and local stack variables. Private memory cannot be accessed from the host.</p>
+<p>Private memory is typically mapped to hardware registers. 
+There is no mechanism in SYCL to query
+the number of registers available to a particular device.
+Developers must refer to the documentation of the SYCL implementation and/or 
+the hardware vendor to understand the limits of private memory.</p>
+<h3>Local Memory</h3>
+<p>Local memory is a contiguous region of memory allocated per work group, and
+visible to all work items within that work group. Local memory is allocated and
+accessed using an accessor on submission. This memory cannot be accessed from
+the host. From the device, local memory is
+visible accessed as an array of contiguous elements of a particular type.
+Multiple arrays of local memory can be allocated on the device. The maximum
+available local memory depends on the hardware and the kernel configuration.</p>
+<h3>Global Memory</h3>
+<p>In SYCL (and OpenCL), global memory represents allocations from a pool of memory
+visible by all threads of the device. In addition, different devices in the
+same SYCL context can see this memory.  Note that not all devices will be available in all contexts - this is an implementation specific detail that depends on the hardware architecture.</p>
+<p>There are two ways of allocating global memory in SYCL: using Buffers or
+Images.</p>
+<h4>Buffer Memory</h4>
+<p>In SYCL, a buffer represents a contiguous region of memory which is managed by
+the SYCL runtime, and can be accessed on the host and on device.  When accessed
+on host, the runtime may copy it via temporary host storage.  When accessed from
+the device, memory is stored in global address space (globally visible to all
+work items) or the constant address space (globally visible to all work items,
+but read-only) if the runtime works-out that the memory is read-only.</p>
+<p>Accessing memory on the host requires construction of a host accessor, whereas
+on the device it is accessed via command group accessors. </p>
+<p>Once executing inside a device kernel or in a host accessor, the buffer is
+represented as an array of contiguous elements of a particular type.</p>
+<p>In the following code snippet, we access the buffer <code>buff_a</code> on the host side
+by creating a host accessor <code>host_acc</code>, and access the same buffer <code>buff_a</code> on
+the device side by using the device accessor <code>dev_acc</code> on the device.  </p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="c1">// creating a SYCL buffer which a data storage.</span>
+<span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">float</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span> <span class="n">buff_a</span><span class="p">(</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="p">{</span><span class="mi">100</span><span class="p">});</span>
+
+<span class="c1">// geting a host access on the buff_a with write permission</span>
+<span class="k">auto</span> <span class="n">host_acc</span> <span class="o">=</span> <span class="n">buff_a</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">();</span>
+
+<span class="c1">// using host accessor to fill the data in the buffer</span>
+<span class="k">for</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span> <span class="mi">100</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">host_acc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span><span class="mf">1.0f</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">queue</span> <span class="n">q</span><span class="p">;</span>
+
+<span class="n">q</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">cgh</span><span class="p">){</span>
+  <span class="c1">// creating a device accessor on the buffer_a with write permission</span>
+  <span class="k">auto</span> <span class="n">dev_acc</span> <span class="o">=</span> <span class="n">buff_a</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span> 
+  <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">hellow_word</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">{</span><span class="mi">100</span><span class="p">},</span> <span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">id</span><span class="p">)</span> <span class="p">{</span>
+     <span class="c1">// using device accessor inside the kernel to fill the data</span>
+     <span class="n">device_acc</span><span class="p">[</span><span class="n">id</span><span class="p">]</span> <span class="o">+=</span><span class="mf">1.0f</span><span class="p">;</span> 
+  <span class="p">});</span> 
+<span class="p">});</span>
+</pre></div>
+</code></pre>
+<h4>Image Memory</h4>
+<p>In SYCL, image objects represent a region of memory managed by the SYCL
+runtime. The data layout of the image memory is deliberately unspecified so as to
+allow implementations to provide a layout optimal to a given device. When
+accessed on host, image memory may be stored on temporary host memory.  When
+accessed on device, image data is stored in device image memory, which can often be
+texture memory if the device supports it. Image memory can also be accessed as
+an array of images representation.</p>
+<p>Accessing image memory on the host is done by constructing an accessor with the
+<code>host_image</code> access target. Accessing image memory on the device is done by
+constructing an accessor with the <code>image</code> access target. Accessing image memory
+on the device in an image array representation is done by constructing an
+accessor with the <code>image_array</code> access target.</p>
+<p>Image memory is accessed via member functions which perform read; sampled read,
+and write functions on the memory on the device.</p>
+<h3>Constant Memory</h3>
+<p>Constant memory is allocated using buffers that are read only or using constant
+SYCL buffer objects.  See the Buffer Memory and Image Memory sections for more details on how to create a buffer or image memory.</p>
+<h2>SYCL memory Management</h2>
+<p>In SYCL, memory is managed through buffer and image objects which maintain a
+memory region across the host and one or more devices. Memory is accessed via
+accessors: objects which represent a request to access the memory in a
+particular region with particular properties.  Accessors are provided to a
+command group as a way of describing data dependencies for a kernel function.
+These data dependencies are used by the SYCL runtime to both satisfy data
+requirements for kernel functions by making the memory available as requested
+and to perform data movement optimizations.</p>
+<p>Accessors are parameterized by an access target which specifies where the
+memory is to be accessed and an access mode which specify how the memory is
+to be accessed. The access target of an accessor can be <code>host_buffer</code>,
+<code>global_buffer</code>, <code>constant_buffer</code>, <code>host_image</code>, <code>image</code> , <code>image_array</code> or
+<code>local</code>. The access mode of an accessor can be <code>read</code>, <code>write</code>, <code>read_write</code>,
+<code>discard_write</code>, <code>discard_read_write</code> and <code>atomic</code>.</p>
+<h3>SYCL memory allocation</h3>
+<p>Memory allocation on the device is typically asynchronous in SYCL, and varies according to the implementation where this happens.</p>
+<p>SYCL accessors are templated by the <code>cl::sycl::access::target</code> enum class which specify the memory space which memory is to be allocated in. When an accessor is passed to a SYCL kernel, it becomes a requirement for the kernel and is then allocated on the associated
+memory space for the specified access target.</p>
+<table>
+<thead>
+<tr>
+<th>Access Target</th>
+<th>Memory Space</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cl::sycl::access::target::host_buffer</code>, <code>cl::sycl::access::target::host_image</code></td>
+<td>Host memory</td>
+</tr>
+<tr>
+<td><code>cl::sycl::access::target::global_buffer</code></td>
+<td>Global memory</td>
+</tr>
+<tr>
+<td><code>cl::sycl::access::target::constant_buffer</code></td>
+<td>Constant memory</td>
+</tr>
+<tr>
+<td><code>cl::sycl::access::target::local</code></td>
+<td>Local memory</td>
+</tr>
+<tr>
+<td><code>cl::sycl::access::target::image</code>, <code>cl::sycl::access::target::image_array</code></td>
+<td>Image memory</td>
+</tr>
+</tbody>
+</table>
+<h3>SYCL memory transfer</h3>
+<p>Memory transfers in SYCL are asynchronous, and performed implicitly by
+the SYCL runtime when an accessor requires access to memory not available already on the device. 
+SYCL accessors are templated by the <code>cl::sycl::access::mode</code> enum class which specifies the mode by which the
+memory is to be accessed. When an accessor is passed to a SYCL kernel, it
+becomes a requirement for the kernel, and the access mode effects the data
+dependencies between SYCL kernels.
+The implicit transfer, and the rule
+determining whether or not the data should be transferred is defined by
+the type of <code>cl::sycl::access::mode</code>. </p>
+<p>The table below describes the different access modes available for SYCL accessors, and whether they can trigger a copy into the device memory from the host or not.</p>
+<table>
+<thead>
+<tr>
+<th>SYCL data access</th>
+<th>Should the data be transferred to/from host/device</th>
+<th>Is the accessed data modifyable on host/device</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cl::sycl::access::mode::read</code></td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>cl::sycl::access::mode::write</code></td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>cl::sycl::access::mode::read_write</code></td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>cl::sycl::access::mode::discard_write</code></td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>cl::sycl::access::mode::discard_read_write</code></td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>cl::sycl::access::mode::atomic</code></td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h3>SYCL pinned memory</h3>
+<p>There is no explicit mechanism to request pinned memory in SYCL. The SYCL
+runtime will always aim to allocate memory in the most optimal way. However, the
+specific requirements for this varies from one architecture to another and from
+one OS to another, and there is no guarantee that SYCL devices support pinned
+memory, so vendor documentation should be consulted for architecture specific
+requirements. </p>
+<p>There are generally two ways which host memory can be allocated:
+<em> When </em>not using* the <code>cl::sycl::property::buffer::use_host_pointer</code> property,
+the SYCL runtime will allocate host memory when required. This uses the implementation-specific mechanism, which can attempt to request pinned memory.</p>
+<ul>
+<li>If the <code>cl::sycl::property::buffer::use_host_pointer</code> property is used, then
+the SYCL runtime will not allocate host memory and will use the pointer provided
+when the <code>buffer</code> is constructed. In this case, it is the users responsibility
+to ensure any requirements for memory allocation to allow pinned memory are
+satisfied.</li>
+</ul>
+<p>Users can manually allocate pinned memory on the host, and hand it over to the SYCL implementation. This will often involve allocating host memory with a suitable
+alignment and multiple, and sometimes can be managed manually using OS specific
+operations such as <code>mmap</code> and <code>munmap</code>. </p>
+<h3>SYCL zero-copy memory</h3>
+<p>In SYCL there is no explicit mechanism to request zero-copy. If a SYCL buffer is
+allocated in pinned memory - according to the requirements above - then the SYCL
+runtime will attempt to initialize with zero-copy if possible.</p>
+<h2>SYCL Memory Access Patterns</h2>
+<p>The SYCL <code>nd_range</code> class describes the range over which the SYCL kernel is to be executed.
+SYCL <code>buffer</code> and <code>image</code> memory objects, alongside subsequent <code>accessor</code> objects, can all
+be 1, 2 or 3 dimensional. The memory is still allocated as a single contiguous
+buffer of memory, therefore individual memory positions can be accessed both using the subscript operator or by manually computing the offset into memory.</p>
+<ul>
+<li>
+<p>When buffer and local accessors are accessed via a multi-dimensional <code>id</code>,
+data is accessed in row-major order.</p>
+</li>
+<li>
+<p>When image accessors are accessed via a multi-dimensional <code>id</code>, data is accessed in column-major order.</p>
+</li>
+</ul>
+<p>The following picture demonstrates accessing the position of <code>(0,1)</code> for
+buffer (<code>buffer_acc</code>) and image (<code>image_acc</code>).  As demonstrated in this
+picture, <code>buffer_acc[0][1]</code> and <code>image_acc[0][1]</code> point to different locations for
+coordinate <code>(0,1)</code>. This is because <code>buffer_acc[0][1]</code> access the location by using
+row-major order, while <code>image_acc[0][1]</code> access the location by using column-major
+order. </p>
+<p><img alt="Accessing the position of (0, 1) for on image accessor and buffer accessor. " src="data:image/png;base64,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"/></p>
+<p>Alternatively, the position w.r.t the origin for an <code>id</code> index can be calculated manually from the <code>id</code> and <code>range</code> objects.</p>
+<h3>Aligned memory access</h3>
+<p>Memory access is said to be <em>aligned</em> when the first address of a memory allocation on the device 
+is an even multiple of the global cache line size. 
+In SYCL the global memory cache line size can be queried from a device, as shown below.</p>
+<p>Aligned access typically increases performance.</p>
+<pre><code class="c++"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">cacheLineSize</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">get_info</span><span class="o">&lt;</span>
+  <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">device</span><span class="o">::</span><span class="n">global_mem_cache_line_size</span><span class="o">&gt;</span><span class="p">();</span>
+</pre></div>
+</code></pre>
+<h3>Coalesced memory access</h3>
+<p>Memory access is called <em>coalesced</em> in SYCL if contiguously executed work items
+access a contiguous chunk of memory. This depends on the mapping between
+the execution order of work items and the linearization of the <code>id</code> being used
+to access memory. There is no guarantee as to the execution order of
+work items: this may vary from one architecture to another.
+Refer to the vendor documentation to find the right mapping between the hardware access pattern and the memory linearization.</p>
+<h2>Similarities and differences</h2>
+<h3>Memory model comparison for CUDA and SYCL</h3>
+<p>The following table shows the equivalence between the different components
+of the memory architecture in SYCL and CUDA.</p>
+<table>
+<thead>
+<tr>
+<th align="center">CUDA name</th>
+<th align="center">SYCL name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">Per-thread local memory</td>
+<td align="center">Private memory</td>
+</tr>
+<tr>
+<td align="center">Per-block shared memory</td>
+<td align="center">Local memory</td>
+</tr>
+<tr>
+<td align="center">Global memory</td>
+<td align="center">Global memory</td>
+</tr>
+<tr>
+<td align="center">Constant memory</td>
+<td align="center">Constant memory</td>
+</tr>
+<tr>
+<td align="center">Texture memory</td>
+<td align="center">Image memory</td>
+</tr>
+<tr>
+<td align="center">Local-memory</td>
+<td align="center"><em>N/A</em></td>
+</tr>
+</tbody>
+</table>
+<p>Note that developers cannot make assumptions as to where the different
+memory is actually placed in the hardware when using SYCL. 
+Implementation documentation shows where in the actual hardware the different
+memories are mapped.
+However, which architectural element can access the different memories 
+remains the same across all architectures, e.g private-memory is only
+visible by the work-item it belongs, whereas global memory is visible 
+by all work-items in the ND-range.</p>
+<h3>Using C-style pointers on CUDA and SYCL</h3>
+<p>It is important to note that CUDA memory allocations are handled using C-style
+pointers that are not accessible directly on the host, and forces users to
+handle the host and the device copy of the information independently - except
+when using either CUDA unified memory or CUDA virtual addressing, see the sections
+below.</p>
+<p>The following example illustrates a trivial CUDA memory allocation.</p>
+<pre><code class="c++"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="o">*</span><span class="n">dev_a</span><span class="p">;</span>
+ <span class="c1">// allocate the memory on the GPU</span>
+ <span class="n">HANDLE_ERROR</span><span class="p">(</span> <span class="n">cudaMalloc</span><span class="p">(</span> <span class="p">(</span><span class="kt">void</span><span class="o">**</span><span class="p">)</span><span class="o">&amp;</span><span class="n">dev_a</span><span class="p">,</span> <span class="n">N</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span> <span class="p">)</span> <span class="p">);</span>
+</pre></div>
+</code></pre>
+<p>The calls to cudaMalloc will allocate <code>dev_a</code>, <code>dev_b</code> and <code>dev_c</code> pointers,
+which will be accessible only from the device.  Pointer arithmetic is possible,
+so <code>dev_a + 3</code> will point to the 3rd integer in the array on the device.  Also,
+the pointer address is guaranteed to be the same across multiple kernel
+executions, since allocations are performed directly by the hardware low-level
+driver.</p>
+<p>This is different from the approach to memory allocation exposed by SYCL. In
+SYCL, memory allocation is handled via C++ objects that encapsulate the
+implementation-specific behavior.  The developer must use accessors to specify when
+using the data on the host or the device.  This enables the SYCL runtime to
+schedule optimal memory synchronization operations (e.g, copy or DMA
+operations).</p>
+<pre><code><div class="highlight"><pre><span></span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span> <span class="n">bufA</span><span class="p">(</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="n">N</span><span class="p">));</span>
+</pre></div>
+</code></pre>
+<p>The buffer above can be accessed on the host and the device using
+a host or a device accessor.  The buffer objects are not pointers, hence pointer arithmetic is
+not possible. The pointer that can be obtained when using the accessor is only
+valid for the duration of the access, as there is no guarantee the underlying
+memory is the same between multiple accesses.</p>
+<p>This mechanism is typically more suited to C++ code-bases, as it is type-safe and
+enables further runtime optimizations.  However, in order to port existing CUDA
+code, it may not be possible to replace the existing code completely to use
+this mechanism.  For this reason, we provide a number of utilities in 
+the <a href="https://github.com/codeplaysoftware/computecpp-sdk/">computecpp-sdk</a>
+that help to expose a CUDA-like pointer to the legacy application whilst keeping
+SYCL objects underneath.  We focus on 
+the <a href="https://github.com/codeplaysoftware/computecpp-sdk/tree/master/include/vptr">Software-managed virtual pointer</a>
+since it is the one that has been used to port Eigen and Tensorflow to SYCL.
+When using the <em>vptr</em> utility, users can create a <em>PointerMapper</em> structure
+that holds the mapping of virtual addresses to SYCL buffers.  This enables
+using C-style <em>malloc</em> and <em>free</em> functions that will return
+non-dereferenciable pointers that can be used in pointer arithmetic.  The
+example below, extracted from the computecpp-sdk, illustrates its usage:</p>
+<p>The following code shows how to mimic the CUDA-like pointer in SYCL,
+by creating a C-style pointer and applying arithmetic operations on the pointer
+without dereferencing it on the host side.</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="c1">// Create the Pointer Mapper structure</span>
+<span class="n">PointerMapper</span> <span class="n">pMap</span><span class="p">;</span>
+<span class="c1">// Create a SYCL buffer of 10 floats</span>
+<span class="c1">// This pointer is a number that identifies the buffer</span>
+<span class="c1">// in the pointer mapper structure</span>
+<span class="kt">float</span> <span class="o">*</span> <span class="n">a</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span> <span class="o">*&gt;</span><span class="p">(</span><span class="n">SYCLmalloc</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">),</span> <span class="n">pMap</span><span class="p">));</span>
+<span class="c1">// Create a SYCL buffer of 25 integers</span>
+<span class="kt">int</span> <span class="o">*</span> <span class="n">b</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span> <span class="o">*&gt;</span><span class="p">(</span><span class="n">SYCLmalloc</span><span class="p">(</span><span class="mi">25</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">),</span> <span class="n">pMap</span><span class="p">));</span>
+<span class="c1">// Create a pointer to the 5th element</span>
+<span class="c1">// This simply adds 5 * sizeof(float *) to the base address.</span>
+<span class="kt">float</span> <span class="o">*</span> <span class="n">c</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="mi">5</span><span class="p">;</span>
+<span class="c1">// Retrieve the buffer</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">pMap</span><span class="p">.</span><span class="n">get_buffer</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">==</span> <span class="n">pMap</span><span class="p">.</span><span class="n">get_buffer</span><span class="p">(</span><span class="n">c</span><span class="p">))</span>
+<span class="c1">// Substracting the value of the offset from the base address of the</span>
+<span class="c1">// buffer recovers the offset into it</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">pMap</span><span class="p">.</span><span class="n">get_offset</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="o">==</span> <span class="mi">5</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">))</span>
+
+<span class="c1">// Invalid usage: no-dereference on the host</span>
+<span class="c1">// float myVal = *c;</span>
+<span class="c1">// Valid access on host: Use host-accessor</span>
+<span class="p">{</span>
+  <span class="k">auto</span> <span class="n">syclAcc</span> <span class="o">=</span> <span class="n">pMap</span><span class="p">.</span><span class="n">get_buffer</span><span class="p">(</span><span class="n">a</span><span class="p">).</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read</span><span class="o">&gt;</span><span class="p">();</span>
+  <span class="kt">float</span> <span class="n">myVal</span> <span class="o">=</span> <span class="n">syclAcc</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="c1">// Free the pointers</span>
+<span class="n">SYCLfree</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">pMap</span><span class="p">);</span>
+<span class="n">SYCLfree</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">pMap</span><span class="p">);</span>
+</pre></div>
+</code></pre>
+<h4>CUDA Unified virtual addressing</h4>
+<p>When a CUDA application is built on a 64-bit system, on hardware
+supporting the compute capability 2.0 and higher, the host and multiple
+devices share a common virtual address space.  This is possible due to the
+interaction of the CUDA application with the NVIDIA system driver.  All host memory allocations made via
+CUDA API calls and all device memory allocations on supported devices are
+within this virtual address range.  This enables detecting the device that
+contains a given pointer by using specific query functions, and using specific
+host allocation functions. Once the device is found, it is possible to enable
+automatic porting of data across host and device. 
+This feature requires a specific system-level driver provided by the vendor,
+and it is not available on SYCL 1.2.1 (or OpenCL 1.2).  Note, however, that
+SYCL objects do automatically handle the transition between the host and the
+device, and no explicit copy operation is required (as opposed to OpenCL).</p>
+<p>In more recent versions of SYCL and OpenCL, new API features partially enable this
+feature. However, hardware support is not widely available.</p>
+<h4>CUDA unified memory</h4>
+<p>CUDA unified memory enables using the same pointer across host and device, and
+provides memory management services to a wide range of programs (either CUDA
+runtime API or directly from within the kernel). It enables, for example,
+kernels to trigger page-faults to read memory from the host. It can also
+automatically alter the memory allocation for cases where the requested size of
+memory is larger than the available memory size.</p>
+<p>Unified Memory offers a “single-pointer-to-data” model that is conceptually
+similar to CUDA’s zero-copy memory. One key difference between the two is that
+with zero-copy allocations, the physical location of memory is pinned in CPU
+system memory such that a program may have fast or slow access to it depending
+on where it is being accessed from. Unified Memory, on the other hand,
+decouples memory and execution spaces so that all data accesses are fast.</p>
+<p>CUDA unified memory is also called managed memory. There are two ways to create managed memory.</p>
+<ul>
+<li>By using <code>__managed__</code> attribute in front of memory declaration. This can only be done in global-scope or file-scope.</li>
+</ul>
+<p>The following code snippet shows how to define <code>__managed_memory__</code> in CUDA.</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">__device__</span> <span class="n">__managed__</span> <span class="kt">int</span> <span class="n">y</span><span class="p">;</span>
+
+<span class="c1">//...</span>
+
+<span class="n">__global__</span> <span class="kt">void</span> <span class="nf">custom_kernel</span><span class="p">()</span>
+<span class="p">{</span>
+  <span class="n">y</span><span class="o">++</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(){</span>
+
+  <span class="c1">//....</span>
+
+  <span class="n">y</span><span class="o">=</span><span class="mi">1</span><span class="p">;</span>
+
+  <span class="c1">//...</span>
+
+<span class="p">}</span>
+</pre></div>
+</code></pre>
+<ul>
+<li>By using CUDA runtime functions.</li>
+</ul>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">cudaError_t</span> <span class="nf">cudaMallocManaged</span><span class="p">(</span><span class="kt">void</span> <span class="o">**</span><span class="n">devPtr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">flags</span><span class="o">=</span><span class="mi">0</span><span class="p">);</span>
+</pre></div>
+</code></pre>
+<p>The following code shows how to define managed memory using CUDA runtime functions.</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">__global__</span> <span class="kt">void</span> <span class="nf">custom_kernel</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span> <span class="n">dev_a</span><span class="p">)</span>                                                 
+<span class="p">{</span>
+  <span class="k">for</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">N</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">dev_a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">i</span><span class="p">;</span>
+  <span class="p">}</span>
+
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+
+  <span class="c1">//...</span>
+  <span class="kt">int</span> <span class="o">*</span><span class="n">dev_a</span><span class="p">;</span>
+  <span class="c1">// allocate the memory on the GPU</span>
+  <span class="n">cudaMallocManaged</span><span class="p">(</span> <span class="p">(</span><span class="kt">void</span><span class="o">**</span><span class="p">)</span><span class="o">&amp;</span><span class="n">dev_a</span><span class="p">,</span> <span class="n">N</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span> <span class="p">);</span>
+
+  <span class="k">for</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">N</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">dev_a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span><span class="n">i</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="c1">//....</span>
+<span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>All CUDA operations that are valid on device memory are also valid on managed
+memory. The primary difference is that the host is also able to reference and
+access managed memory.</p>
+<p>Like in the case of CUDA unified virtual addressing, this feature requires a
+specific system-level driver provided by the vendor, and it is not available on
+SYCL 1.2.1 (or OpenCL 1.2). Note, however, that SYCL objects do automatically handle 
+the transition between the host and the device, and no explicit
+copy operation is required (as opposed to OpenCL).</p>
+<p>In newer versions of SYCL and OpenCL, new API features will partially enable this
+feature.  In particular, SVM (Shared Virtual Memory), enables equivalent
+behavior.</p></main>
+            </body>
+        </html>
+        

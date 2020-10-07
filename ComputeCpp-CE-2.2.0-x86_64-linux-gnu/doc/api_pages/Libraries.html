@@ -1,0 +1,95 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Libraries</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Libraries</h1>
+                <main>
+<p>CUDA has been available for developers since early 2007 and since then it has developed a large ecosystem of libraries and support tools.
+Developers for NVIDIA hardware can use multiple pre-existing libraries for different purposes that are provided either as part of the CUDA toolkit or as separate downloads from the CUDA developers website.</p>
+<p>SYCL, on the other hand, has only been public since 2015. The latest specification was published in December 2017. As a more recent standard there are currently not as many applications and libraries available in the SYCL ecosystem compared to CUDA.
+In this section we focus on the libraries for which there is an equivalent between CUDA and SYCL, so that
+developers can find direct comparisons between the two when migrating code.</p>
+<h2>BLAS libraries</h2>
+<p><a href="http://www.netlib.org/blas/">Basic Linear Algebra Subprograms (BLAS)</a> is a specification that describes a set of low-level routines for performing common linear algebra operations such as vector addition, scalar multiplication, dot products, linear combinations, and matrix multiplication. 
+They are organized in different levels, depending on whether they perform vector-vector, matrix-vector or matrix-matrix operations.
+Level 1 BLAS performs scalar, vector and vector-vector operations; Level 2 BLAS perforsm matrix-vector operations, and Level 3 BLAS performs matrix-matrix operations. </p>
+<p>Most systems and hardware vendors provide optimized BLAS libraries, since they are the fundamental operations of many other libraries, like linear algebra software or, more recently, machine learning frameworks.</p>
+<p>The BLAS interface defines C and Fortran routines.</p>
+<h3>cuBLAS</h3>
+<p><a href="https://developer.nvidia.com/cublas">NVIDIA cuBLAS</a> is an implementation of BLAS optimized for NVIDIA GPUs. The library supports single and multiple GPU configurations, and offers the complete BLAS interface for all types.
+cuBLAS requires re-writing your source code to include CUDA calls and cuBLAS library calls. An alternative implementation (NVBLAS) is available for level 3 operations that is able to re-route calls to a CPU version of BLAS to the GPU variant, at runtime.</p>
+<p>The example below illustrates a snippet of code that initializes data using cuBLAS and performs a general matrix multiplication.
+More complete examples can be found in the <a href="https://developer.nvidia.com/cuda-code-samples">CUDA Code Samples</a></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="cm">/* Allocate memory using standard cuda allocation layout */</span>
+<span class="n">CHECK_ERROR</span><span class="p">(</span><span class="n">cudaMalloc</span><span class="p">((</span><span class="kt">void</span> <span class="o">**</span><span class="p">)</span><span class="o">&amp;</span><span class="n">d_C</span><span class="p">,</span> <span class="n">n2</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">d_C</span><span class="p">[</span><span class="mi">0</span><span class="p">])));</span>
+<span class="cm">/* Create "vector structures" on the device and initialize them with data on the host.</span>
+<span class="cm"> * The routine will copy data from the host to the device if required.</span>
+<span class="cm"> */</span>
+<span class="n">CHECK_ERROR</span><span class="p">(</span><span class="n">cublasSetVector</span><span class="p">(</span><span class="n">n2</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">h_A</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">h_A</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">d_A</span><span class="p">,</span> <span class="mi">1</span><span class="p">));</span>
+<span class="n">CHECK_ERROR</span><span class="p">(</span><span class="n">cublasSetVector</span><span class="p">(</span><span class="n">n2</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">h_B</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">h_B</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">d_B</span><span class="p">,</span> <span class="mi">1</span><span class="p">));</span>
+<span class="n">CHECK_ERROR</span><span class="p">(</span><span class="n">cublasSetVector</span><span class="p">(</span><span class="n">n2</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">h_C</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">h_C</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">d_C</span><span class="p">,</span> <span class="mi">1</span><span class="p">));</span>
+
+<span class="cm">/* Call Sgemm (Single floating point precision general matrix multiply) algorithm on Cublas.</span>
+<span class="cm"> * "handle" is a CUBLAS specific type that stores all the library and device initialization code.</span>
+<span class="cm">*/</span>
+<span class="n">CHECK_ERROR</span><span class="p">(</span><span class="n">cublasSgemm</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">CUBLAS_OP_N</span><span class="p">,</span> <span class="n">CUBLAS_OP_N</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">alpha</span><span class="p">,</span> <span class="n">d_A</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">d_B</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">beta</span><span class="p">,</span> <span class="n">d_C</span><span class="p">,</span> <span class="n">N</span><span class="p">));</span>
+
+<span class="cm">/* Allocate host memory for reading back the result from device memory */</span>
+<span class="n">h_C</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span> <span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="n">n2</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">h_C</span><span class="p">[</span><span class="mi">0</span><span class="p">]));</span>
+
+<span class="cm">/* Read the result back. The routine will trigger the copy back to the host implicitly.</span>
+<span class="cm"> */</span>
+<span class="n">CHECK_ERROR</span><span class="p">(</span><span class="n">cublasGetVector</span><span class="p">(</span><span class="n">n2</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">h_C</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">d_C</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">h_C</span><span class="p">,</span> <span class="mi">1</span><span class="p">));</span>
+</pre></div>
+</code></pre>
+<h3>SYCL-BLAS</h3>
+<p><a href="https://github.com/codeplaysoftware/sycl-blas">SYCL-BLAS</a> is a BLAS interface implementation written in SYCL.
+SYCL-BLAS leverages C++ expression tree templates to generate SYCL kernels via kernel composition. Expression tree templates are a widely used technique to implement expressions on C++, facilitating development and composition of operations. 
+SYCL-BLAS can be optimized for different platforms using different compile-time parameters.</p>
+<p>The example below illustrates the basic usage of SYCL-BLAS to dispatch an AXPY operation.
+More complete examples can be found in <a href="https://github.com/codeplaysoftware/sycl-blas/tree/master/test/unittest">the tests from the project repository</a>.</p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="c1">// Create an Executor for the Library interface using SYCL and a pre-existing  queue.</span>
+<span class="n">Executor</span><span class="o">&lt;</span><span class="n">SYCL</span><span class="o">&gt;</span> <span class="n">ex</span><span class="p">(</span><span class="n">syclQueue</span><span class="p">);</span>
+<span class="c1">// Instantiate the data in the SYCL runtime</span>
+<span class="k">auto</span> <span class="n">gpu_vX</span> <span class="o">=</span> <span class="n">ex</span><span class="p">.</span><span class="k">template</span> <span class="n">allocate</span><span class="o">&lt;</span><span class="n">ScalarT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">size</span><span class="p">);</span>
+<span class="k">auto</span> <span class="n">gpu_vY</span> <span class="o">=</span> <span class="n">ex</span><span class="p">.</span><span class="k">template</span> <span class="n">allocate</span><span class="o">&lt;</span><span class="n">ScalarT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">size</span><span class="p">);</span>
+<span class="c1">// Explicit SYCL copy from the host to the device</span>
+<span class="n">ex</span><span class="p">.</span><span class="n">copy_to_device</span><span class="p">(</span><span class="n">vX</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">gpu_vX</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span>
+<span class="n">ex</span><span class="p">.</span><span class="n">copy_to_device</span><span class="p">(</span><span class="n">vY</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">gpu_vY</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span>
+<span class="c1">// Call the axpy routine. Note the the type is automatically inferred, </span>
+<span class="c1">// so no need for the first letter</span>
+<span class="n">_axpy</span><span class="p">(</span><span class="n">ex</span><span class="p">,</span> <span class="p">(</span><span class="n">size</span> <span class="o">+</span> <span class="n">strd</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">strd</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">gpu_vX</span><span class="p">,</span> <span class="n">strd</span><span class="p">,</span> <span class="n">gpu_vY</span><span class="p">,</span> <span class="n">strd</span><span class="p">);</span>
+<span class="c1">// Update the host pointer</span>
+<span class="n">ex</span><span class="p">.</span><span class="n">copy_to_host</span><span class="p">(</span><span class="n">gpu_vY</span><span class="p">,</span> <span class="n">vY</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">size</span><span class="p">);</span>
+</pre></div>
+</code></pre>
+<p>SYCL BLAS aims to support all the original BLAS APIs. At the time of writing
+this document, SYCL BLAS supports all APIs from BLAS level 1, the GEMV and GER
+APIs from BLAS level 2,  and GEMM APIs from BLAS level 3.</p>
+<h2>Deep Neural Networks</h2>
+<p>Deep learning (also known as deep structured learning or hierarchical learning) is part of a broader family of machine learning methods based on learning data representations, as opposed to task-specific algorithms. Learning can be supervised, semi-supervised or unsupervised. 
+Recent advances in this area have forced hardware and system vendors to offer highly optimized versions of common algorithms for their platforms.</p>
+<h3>cuDNN</h3>
+<p><a href="https://developer.nvidia.com/cudnn">cuDNN</a> is the NVIDIA Deep Neural Network library, a CUDA-based library that contains a number of primitives to accelerate deep neural network frameworks.
+It contains a set of the most commonly used routines in machine learning, such as convolution, pooling, normalization and activation layers.</p>
+<h3>SYCL-DNN</h3>
+<p>SYCL-DNN is a portable machine learning convolution library written in SYCL. It implements highly optimized convolution algorithms for different platforms.
+SYCL-DNN is a work-in-progress project from Codeplay Software, and can be obtained from their <a href="https://github.com/codeplaysoftware/SYCL-DNN">open-source repository</a>.</p>
+<h3>TensorFlow</h3>
+<p><a href="http://www.tensorflow.org">TensorFlow</a> is an open-source software library for dataflow programming across a range of tasks. 
+Although it was designed initially as a math library, its main use is the development of machine learning applications, with
+a particular focus on neural networks. 
+TensorFlow was developed by Google, but is now released under the Apache 2.0 open source license. </p>
+<p>Tensorflow upstream supports both CUDA and SYCL programming models natively, using different compilation options.
+Codeplay maintains a <a href="http://www.github.com/codeplaysoftware/tensorflow">development branch</a> of TensorFlow with SYCL support that is updated with the latest performance optimizations and SYCL support.</p>
+<p>Instructions on how to build TensorFlow with SYCL can be found on the <a href="../../getting-started-with-tensorflow/tensorflow-overview.html">Codeplay developer website</a>.</p>
+<p>The Tensorflow user-interface is the same irrespective of the backend used, therefore, any Tensorflow model used on the CUDA backend should run on the SYCL backend.
+Note that different hardware has different restrictions, which limits the portability of the different models.</p></main>
+            </body>
+        </html>
+        

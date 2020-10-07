@@ -1,0 +1,122 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Options for Building Eigen</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Options for Building Eigen</h1>
+                <main>
+<p>The Eigen project has a SYCL back-end implementation that implements operations such as tensors and runs on various devices. You can find the repository for the Eigen SYCL implementation here, and the additions are being up-streamed to the main project repository. The supported devices range from desktop CPUs, GPUs through to embedded accelerators such as the Renesas CVengine or ARM Mali GPU. Each device has different capabilities and in particular the embedded devices have different memory models and restricted memory sizes.</p>
+<p>If you would like to see some code that uses Eigen tensors using SYCL, take a look at the <a href="https://bitbucket.org/codeplaysoftware/eigen/src/default/bench/tensors/">tensor benchmark code</a>.</p>
+<p>In order to tune the Eigen expressions for these devices and make the most of the hardware's capabilities, various compile time flags can be passed to the CMake when compiling your code to specialize the Eigen expressions for a particular device. These flags are outlined on this page.</p>
+<p>They can be passed to CMake using <code>-Dmacroname</code> or in the source code using a <code>#define</code>.</p>
+<h2>Running the CMake Command to Build the SYCL Tests for Eigen</h2>
+<p>The SYCL Eigen implementation includes a set of tests that can be run and the following commands will build these tests so that they can be executed.</p>
+<p>Create a build folder in the root of Eigen and inside that directory run the following command.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">-</span><span class="n">DEIGEN_TEST_CXX11</span><span class="o">=</span><span class="mi">1</span> <span class="o">-</span><span class="n">DEIGEN_TEST_SYCL</span><span class="o">=</span><span class="mi">1</span> <span class="o">-</span><span class="n">DOpenCL_LIBRARY</span><span class="o">=</span><span class="s">"PathToOpenCL.so"</span> <span class="o">-</span><span class="n">DComputeCpp_DIR</span><span class="o">=</span><span class="s">"PathToComputeCppRootDirectory"</span> <span class="o">-</span><span class="n">DCMAKE_CXX_FLAGS</span><span class="o">=</span><span class="s">"-O3"</span> <span class="o">-</span><span class="n">DCOMPUTECPP_USER_FLAGS</span><span class="o">=</span><span class="s">"-O3 -sycl-compress-name -fsycl-split-modules=20"</span> <span class="p">..</span><span class="o">/</span>
+</pre></div>
+</code></pre>
+<p>As well as the above, <code>-DEIGEN_HAS_CXX11_MATH=1</code> should be defined on Arm platforms, it can be given in <code>CMAKE_CXX_FLAGS</code>.
+It is only possible to compile the SYCL tests using this make command from the root of your build folder.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="o">-</span><span class="n">j</span> <span class="mi">8</span> <span class="err">$</span><span class="p">(</span><span class="n">make</span> <span class="n">help</span> <span class="o">|</span> <span class="n">grep</span> <span class="o">-</span><span class="n">E</span> <span class="s">"sycl"</span> <span class="o">|</span> <span class="n">sed</span> <span class="s">"s/\.\.\.//"</span><span class="p">)</span>
+</pre></div>
+</code></pre>
+<p>Similarly the command with ninja looks like this.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="n">time</span> <span class="n">ninja</span> <span class="err">$</span><span class="p">(</span><span class="n">ninja</span> <span class="o">-</span><span class="n">t</span> <span class="n">targets</span> <span class="o">|</span> <span class="n">grep</span> <span class="o">-</span><span class="n">E</span> <span class="s">"sycl"</span> <span class="o">|</span> <span class="n">sed</span> <span class="s">"s/:.*//"</span><span class="p">)</span>
+</pre></div>
+</code></pre>
+<h2>Cross-compiling Eigen SYCL</h2>
+<p>You can cross-compile Eigen SYCL by giving CMake a toolchain file setting up your cross compilation toolchain:</p>
+<pre><code><div class="highlight"><pre><span></span><span class="o">-</span><span class="n">DCMAKE_TOOLCHAIN_FILE</span><span class="o">=&lt;</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">toolchain</span><span class="p">.</span><span class="n">cmake</span><span class="o">&gt;</span>
+</pre></div>
+</code></pre>
+<p>And point the Eigen build to an OpenCL library for the target, as well as paths to a native ComputeCpp package as well as a target ComputeCpp package:</p>
+<pre><code><div class="highlight"><pre><span></span><span class="o">-</span><span class="n">DComputeCpp_HOST_DIR</span><span class="o">=&lt;</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">native</span><span class="o">/</span><span class="n">ComputeCpp</span><span class="o">&gt;</span>
+<span class="o">-</span><span class="n">DComputeCpp_DIR</span><span class="o">=&lt;</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">target</span><span class="o">/</span><span class="n">ComputeCpp</span><span class="o">&gt;</span>
+<span class="o">-</span><span class="n">DOpenCL_LIBRARY</span><span class="o">=&lt;</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">target</span><span class="o">/</span><span class="n">OpenCL</span><span class="o">&gt;</span>
+<span class="o">-</span><span class="n">DOpenCL_INCLUDE</span><span class="o">=&lt;</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">OpenCL</span><span class="o">/</span><span class="n">headers</span><span class="o">&gt;</span>
+</pre></div>
+</code></pre>
+<p>You also need to set:</p>
+<pre><code><div class="highlight"><pre><span></span><span class="o">-</span><span class="n">DCOMPUTECPP_USE_COMPILER_DRIVER</span><span class="o">=</span><span class="mi">0</span>
+</pre></div>
+</code></pre>
+<p>To make sure you use two step SYCL compilation so that <code>compute++</code> isn't used where the cross-compiler should be used.</p>
+<p>As well as <code>COMPUTECPP_BITCODE</code> to match your device:</p>
+<pre><code><div class="highlight"><pre><span></span><span class="o">-</span><span class="n">DCOMPUTECPP_BITCODE</span><span class="o">=</span><span class="s">"spir"</span>   <span class="err">#</span> <span class="k">for</span> <span class="mi">32</span> <span class="n">bit</span> <span class="n">target</span>
+<span class="o">-</span><span class="n">DCOMPUTECPP_BITCODE</span><span class="o">=</span><span class="s">"spir64"</span> <span class="err">#</span> <span class="k">for</span> <span class="mi">64</span> <span class="n">bit</span> <span class="n">target</span>
+</pre></div>
+</code></pre>
+<p>CMake may also ask you to provide variables such as:</p>
+<pre><code><div class="highlight"><pre><span></span><span class="o">-</span><span class="n">DTHREADS_PTHREAD_ARG</span><span class="o">=</span><span class="mi">1</span>
+</pre></div>
+</code></pre>
+<p>This is because when cross-compiling CMake can't run generated binaries to make sure certain libraries and options are available, so we need to inform CMake whether these features are available or not.</p>
+<h2>Local Work Group Size</h2>
+<p>Different devices might have different work group sizes, and the following can be set to accommodate different hardware configurations and architectures.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="cp">#define EIGEN_SYCL_LOCAL_THREAD_DIM0 16</span>
+<span class="cp">#define EIGEN_SYCL_LOCAL_THREAD_DIM1 16</span>
+</pre></div>
+</code></pre>
+<p>These are the static value for <code>itemID.get_local(0)</code> and <code>itemID.get_local(1)</code> respectively. They must be a power of 2. It is advised to set the same value for <code>EIGEN_SYCL_LOCAL_THREAD_DIM0</code> and <code>EIGEN_SYCL_LOCAL_THREAD_DIM1</code>.</p>
+<p>If the device has resource constraints you should restrict the maximum number of threads. This is important for certain processors, for example Intel CPUs and GPUs, and Arm devices. This macro is used for TensorScanOp on GPU for SYCL back-end. The following default option is equivalent of 1024 blocks on AMD which has 256 work group size.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="cp">#define EIGEN_SYCL_MAX_GLOBAL_RANGE 262144</span>
+</pre></div>
+</code></pre>
+<h2>Local Memory Usage</h2>
+<p>It might be necessary to disable local memory on specific hardware that does not have that type of memory. The macros below can be used to enable and disable local memory. If both are defined or neither are defined, the decision for using the local memory will be made at runtime. The default is to use local memory in order to improve performance when there is a dedicated shared memory.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="cp">#define EIGEN_SYCL_LOCAL_MEM 1</span>
+</pre></div>
+</code></pre>
+<p>On devices such as Arm GPUs that do not have dedicated shared memory, local memory is used to mimic global memory so it is best to disable the <code>EIGEN_SYCL_LOCAL_MEM</code> macro and enable the <code>EIGEN_SYCL_NO_LOCAL_MEM</code> macro.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="cp">#define EIGEN_SYCL_NO_LOCAL_MEM 1</span>
+</pre></div>
+</code></pre>
+<h2>Register Usage</h2>
+<p>If the device you are using has limitations on registers, you can define the size of the registers. If there are no limitations the launcher tries to choose the optimized number of registers.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="cp">#define EIGEN_SYCL_REG_M [YOUR SIZE POWER of 2]</span>
+<span class="cp">#define EIGEN_SYCL_REG_N [YOUR SIZE POWER of 2]</span>
+</pre></div>
+</code></pre>
+<h2>Barrier Usage</h2>
+<p>The following macro gives a performance boost on the ARM Mali GPU by disabling some barriers.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="cp">#define EIGEN_SYCL_DISABLE_ARM_GPU_CACHE_OPTIMISATION 1</span>
+</pre></div>
+</code></pre>
+<h2>Device selection</h2>
+<p>By default when running the tests, they will run on all available SYCL devices. Compiling with the <code>EIGEN_SYCL_USE_DEFAULT_SELECTOR</code> macro will instead select the preferred device using <code>cl::sycl::default_selector</code> that can be controlled at runtime by the environment variable <code>COMPUTECPP_TARGET</code>. (Note: <code>COMPUTECPP_TARGET</code> is a ComputeCpp specific macro and is not available in other SYCL implementations)</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="cp">#define EIGEN_SYCL_USE_DEFAULT_SELECTOR 1</span>
+</pre></div>
+</code></pre>
+<h2>Eigen Vectorization</h2>
+<p>The following flags can be used for enabling and disabling Eigen vectorization. By default Eigen vectorization is enabled however, if the device does not support vectorization or you are compiling the code for OpenCL CPU devices you should pass both the above flags in compute++ and CXX compilers to disable vectorization as Compute Aorta has its own vectorization system. Remember that either both flags should be set or none. If you set one of them and don't set the other one you may get inconsistent kernel generated for host and device.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="cp">#define EIGEN_DONT_VECTORIZE_SYCL 1</span>
+<span class="cp">#define EIGEN_DONT_VECTORIZE 1</span>
+</pre></div>
+</code></pre>
+<h2>Use Program Class</h2>
+<p>In some cases it can be useful to make Eigen use the <code>cl::sycl::program</code> class, this can be done by enabling the following macro.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="cp">#define EIGEN_SYCL_USE_PROGRAM_CLASS 1</span>
+</pre></div>
+</code></pre>
+<h2>Enable Exceptions</h2>
+<p>By default exceptions are disabled. Enabling them will change how SYCL errors are handled and will use the <code>wait_and_throw</code> variant instead of a <code>wait</code>. It is recommended to enable it when an error occurs.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="cp">#define EIGEN_EXCEPTIONS 1</span>
+</pre></div>
+</code></pre>
+<h2>Do not reuse buffers</h2>
+<p>By default Eigen will reuse any temporary SYCL buffers created in some operations. You can disable this feature to not reuse the buffers if some other mechanism already reuses the buffers or if the maximum memory available is too limited.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="cp">#define EIGEN_SYCL_NO_REUSE_BUFFERS 1</span>
+</pre></div>
+</code></pre>
+<h2>Store latest event</h2>
+<p>The Eigen API does not have a mechanism to return the event of an asynchronous operation. Enabling this option provides a workaround that allows the user to get the latest event that was created using the <code>SyclDevice</code>. Enabling this option causes extra locks to happen.</p>
+<pre><code class="shell"><div class="highlight"><pre><span></span><span class="cp">#define EIGEN_SYCL_STORE_LATEST_EVENT 1</span>
+</pre></div>
+</code></pre></main>
+            </body>
+        </html>
+        

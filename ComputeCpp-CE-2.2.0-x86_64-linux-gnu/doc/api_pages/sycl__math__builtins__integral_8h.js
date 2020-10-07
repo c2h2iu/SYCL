@@ -1,0 +1,26 @@
+var sycl__math__builtins__integral_8h =
+[
+    [ "COMPUTECPP_BUILTIN_INTEGER_INVOKE2", "sycl__math__builtins__integral_8h.html#aecbd908360becfc22cdc1745b0098f0a", null ],
+    [ "COMPUTECPP_DETAIL_NAMESPACE", "sycl__math__builtins__integral_8h.html#a8b408da0cc2cefba32304264f29908cd", null ],
+    [ "abs", "sycl__math__builtins__integral_8h.html#a48f2bc94b5e7183685d229240f644d40", null ],
+    [ "abs_diff", "sycl__math__builtins__integral_8h.html#a8cbe2ee25a2e3f92681c1a64b4a6c30a", null ],
+    [ "add_sat", "sycl__math__builtins__integral_8h.html#a9c637bd79692240d9d75c759c3a6075f", null ],
+    [ "clamp", "sycl__math__builtins__integral_8h.html#ab3133d6bd8bac81298f3fdaf07e5ea7c", null ],
+    [ "clamp", "sycl__math__builtins__integral_8h.html#a3089b30eeb74f6c0ee9643c3d2e1ebb5", null ],
+    [ "clz", "sycl__math__builtins__integral_8h.html#ac53eabbcf938d9427731209db03a3142", null ],
+    [ "hadd", "sycl__math__builtins__integral_8h.html#aa990ce49e7cf68805ca679aeb2341596", null ],
+    [ "mad24", "sycl__math__builtins__integral_8h.html#a2639463af3dc31b615e84e5d7d267851", null ],
+    [ "mad_hi", "sycl__math__builtins__integral_8h.html#a36027d6559f96d25cf2df8d76329e63e", null ],
+    [ "mad_sat", "sycl__math__builtins__integral_8h.html#a4fa31c2f0286e434715324b3e86e7167", null ],
+    [ "max", "sycl__math__builtins__integral_8h.html#aba609fbf4d7390d7e5338e4737aee23f", null ],
+    [ "max", "sycl__math__builtins__integral_8h.html#aaed6a90fd1d95a32d57c33150369b404", null ],
+    [ "min", "sycl__math__builtins__integral_8h.html#a3842d2248621cb1d66f075e9b3ed14e3", null ],
+    [ "min", "sycl__math__builtins__integral_8h.html#ac0fb2d9b5a7695d4d336cb39e458315f", null ],
+    [ "mul24", "sycl__math__builtins__integral_8h.html#ad13fe9fb9cc0e4417c1474637094b91b", null ],
+    [ "mul_hi", "sycl__math__builtins__integral_8h.html#ab26bfaf48a8e16aa0b74c4b18d6636e4", null ],
+    [ "popcount", "sycl__math__builtins__integral_8h.html#ad4a2477f63288432ef66e31a8da13d08", null ],
+    [ "rhadd", "sycl__math__builtins__integral_8h.html#ac70d2cfa88691bab33567d3325b2739b", null ],
+    [ "rotate", "sycl__math__builtins__integral_8h.html#a7813f6e6037a9a436eb6cc5edc102d2f", null ],
+    [ "sub_sat", "sycl__math__builtins__integral_8h.html#a884611b1a5bc90237971607ca2232844", null ],
+    [ "upsample", "sycl__math__builtins__integral_8h.html#adcb5035169fade05f688f695e45a46e8", null ]
+];

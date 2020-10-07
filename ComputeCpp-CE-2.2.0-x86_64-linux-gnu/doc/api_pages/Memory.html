@@ -1,0 +1,205 @@
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <link rel="stylesheet" type="text/css" href="file:///C:/Users/Graham/Documents/product-release-agent-guides/document-style.css" />
+                <title>Memory</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                <h1>Memory</h1>
+                <main>
+<p>While for simple computations it is okay to operate purely on work-items, any more complex workload will require finer-grained control. Unfortunately, this comes at the cost of introducing some complexity. Hopefully though, we can clear everything up!</p>
+<p>You might remember that work-items are grouped into work-groups. The splitting into work-groups is not purely conceptual - it has very real implications on memory accesses and performance. Work-groups are independent of each other. In fact, there is no way to synchronize between them in a single kernel. For this reason, two work-groups should never write to the same memory location (although they can read shared data).</p>
+<p>OpenCL and SYCL define a clear distinction between various regions in memory and rules that govern accesses to these. Everything on the CPU side is known as <strong>host memory</strong>. It is not directly accessible from kernels, but as we've seen, buffers and accessors provide facilities for copying host data to the device and accessing it there. The corresponding accessor target is <code>access::target::host_buffer</code>.</p>
+<p>On the device side, more memory regions exist:</p>
+<ul>
+<li>
+<p><strong>Global memory</strong> is available in the same form to all work-groups and items. It can be thought of as a device-side equivalent of RAM. The corresponding target, <code>access::target::global_buffer</code>, is the default target for <code>buffer::get_access</code>. In previous examples we didn't explicitly specify a target, so this one was used.</p>
+</li>
+<li>
+<p><strong>Local memory</strong> is specific to a single work-group. Work-groups cannot access others' local memory, but it is shared between all work-items in a group. It can be thought of as a user-controlled cache. It is especially useful for divide-and-conquer problems where each part of computation is handled by one work-group. Local memory can be used to store the result of such a computation. Local memory is allocated per kernel execution and it cannot be filled with host data, so you have to initialize it yourself. The canonical way to allocate it is to create a <code>access::target::local</code> accessor inside a command group, passing it the requested allocation size.</p>
+</li>
+<li>
+<p><strong>Private memory</strong> is a small region dedicated to each work-item. It is much like CPU register memory. All variables created in a kernel are stored in private memory. Additionally, dedicated <code>private_memory</code> objects can be created for this purpose.</p>
+</li>
+<li>
+<p>Finally, <strong>constant memory</strong> is a read-only part of global memory, which similarly can reference a host-side buffer.</p>
+</li>
+</ul>
+<p>In this example we will try to compute an array reduction - the sum of all its elements. The overall structure of the example is as follows:</p>
+<p><strong>Parallel reduction</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;array&gt;</span><span class="cp"></span>
+  <span class="cp">#include</span> <span class="cpf">&lt;cstdint&gt;</span><span class="cp"></span>
+  <span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+  <span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
+  <span class="cp">#include</span> <span class="cpf">&lt;cassert&gt;</span><span class="cp"></span>
+
+  <span class="cp">#include</span> <span class="cpf">&lt;CL/sycl.hpp&gt;</span><span class="cp"></span>
+  <span class="k">namespace</span> <span class="n">sycl</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="p">;</span>
+
+  <span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">char</span><span class="o">**</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="kt">int32_t</span><span class="p">,</span> <span class="mi">16</span><span class="o">&gt;</span> <span class="n">arr</span><span class="p">;</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">mt19937</span> <span class="n">mt_engine</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">random_device</span><span class="p">{}());</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">uniform_int_distribution</span><span class="o">&lt;</span><span class="kt">int32_t</span><span class="o">&gt;</span> <span class="n">idist</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Data: "</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="nl">el</span> <span class="p">:</span> <span class="n">arr</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">el</span> <span class="o">=</span> <span class="n">idist</span><span class="p">(</span><span class="n">mt_engine</span><span class="p">);</span>
+      <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">el</span> <span class="o">&lt;&lt;</span> <span class="s">" "</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">int32_t</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span> <span class="n">buf</span><span class="p">(</span><span class="n">arr</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="n">arr</span><span class="p">.</span><span class="n">size</span><span class="p">()));</span>
+
+    <span class="o">&lt;&lt;</span><span class="n">Read</span> <span class="n">hardware</span> <span class="n">information</span><span class="o">&gt;&gt;</span>
+
+    <span class="o">&lt;&lt;</span><span class="n">Reduction</span> <span class="n">loop</span><span class="o">&gt;&gt;</span>
+
+    <span class="k">auto</span> <span class="n">acc</span> <span class="o">=</span> <span class="n">buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read</span><span class="o">&gt;</span><span class="p">();</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Sum: "</span> <span class="o">&lt;&lt;</span> <span class="n">acc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>The first thing we do is initialize an array of random values to be added together and a buffer for that data. We then print the values.</p>
+<p><strong>Read hardware information</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="n">sycl</span><span class="o">::</span><span class="n">device</span> <span class="n">device</span> <span class="o">=</span> <span class="n">sycl</span><span class="o">::</span><span class="n">default_selector</span><span class="p">{}.</span><span class="n">select_device</span><span class="p">();</span>
+  <span class="n">sycl</span><span class="o">::</span><span class="n">queue</span> <span class="n">queue</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="p">[]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">exception_list</span> <span class="n">el</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">ex</span> <span class="p">:</span> <span class="n">el</span><span class="p">)</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">rethrow_exception</span><span class="p">(</span><span class="n">ex</span><span class="p">);</span> <span class="p">}</span>
+    <span class="p">}</span> <span class="p">);</span>
+
+  <span class="k">auto</span> <span class="n">wgroup_size</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">get_info</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">device</span><span class="o">::</span><span class="n">max_work_group_size</span><span class="o">&gt;</span><span class="p">();</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">wgroup_size</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">throw</span> <span class="s">"Work-group size has to be even!"</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">auto</span> <span class="n">part_size</span> <span class="o">=</span> <span class="n">wgroup_size</span> <span class="o">*</span> <span class="mi">2</span><span class="p">;</span>
+
+  <span class="k">auto</span> <span class="n">has_local_mem</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">is_host</span><span class="p">()</span>
+        <span class="o">||</span> <span class="p">(</span><span class="n">device</span><span class="p">.</span><span class="n">get_info</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">device</span><span class="o">::</span><span class="n">local_mem_type</span><span class="o">&gt;</span><span class="p">()</span>
+        <span class="o">!=</span> <span class="n">sycl</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">local_mem_type</span><span class="o">::</span><span class="n">none</span><span class="p">);</span>
+  <span class="k">auto</span> <span class="n">local_mem_size</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">get_info</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">device</span><span class="o">::</span><span class="n">local_mem_size</span><span class="o">&gt;</span><span class="p">();</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">has_local_mem</span>
+      <span class="o">||</span> <span class="n">local_mem_size</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">wgroup_size</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int32_t</span><span class="p">)))</span>
+  <span class="p">{</span>
+       <span class="k">throw</span> <span class="s">"Device doesn't have enough local memory!"</span><span class="p">;</span>
+  <span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>After that we initialize a queue in a slightly different manner than before. Instead of passing a selector to the <code>queue</code> constructor, we request it to return a selected <code>device</code> object. This allows us to access hardware information.</p>
+<p>The <code>device::get_info</code> function has a single template parameter specifying the piece of information that we want to retrieve. <code>info::device::max_work_group_size</code> is defined to be the maximum number of work-items in a work-group executing on a single compute unit. Exceeding this size should result in an error. It is not necessarily the optimal size, but it can be expected to yield good performance.</p>
+<p>We initialize a <code>part_size</code> variable to be the number of elements in the array that work-group reduces. Since each work-item initially reduces two elements, it is twice the work-group size.</p>
+<p>We also test the device for the local memory size - we cannot perform the reduction if there is too little of it or if local memory is unsupported altogether. Of course, in a real-world application a special case would have to be made to also support such devices.</p>
+<p><strong>Reduction loop</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">len</span> <span class="o">=</span> <span class="n">arr</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+  <span class="k">while</span> <span class="p">(</span><span class="n">len</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// division rounding up</span>
+    <span class="k">auto</span> <span class="n">n_wgroups</span> <span class="o">=</span> <span class="p">(</span><span class="n">len</span> <span class="o">+</span> <span class="n">part_size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">part_size</span><span class="p">;</span>
+
+    <span class="n">queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">sycl</span><span class="o">::</span><span class="n">accessor</span>
+    <span class="o">&lt;</span><span class="kt">int32_t</span><span class="p">,</span>
+     <span class="mi">1</span><span class="p">,</span>
+     <span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read_write</span><span class="p">,</span>
+     <span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">target</span><span class="o">::</span><span class="n">local</span><span class="o">&gt;</span>
+    <span class="n">local_mem</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="n">wgroup_size</span><span class="p">),</span> <span class="n">cgh</span><span class="p">);</span>
+
+    <span class="k">auto</span> <span class="n">global_mem</span> <span class="o">=</span> <span class="n">buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read_write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
+
+    <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">reduction_kernel</span><span class="o">&gt;</span><span class="p">(</span>
+      <span class="n">sycl</span><span class="o">::</span><span class="n">nd_range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="n">n_wgroups</span> <span class="o">*</span> <span class="n">wgroup_size</span><span class="p">,</span> <span class="n">wgroup_size</span><span class="p">),</span>
+      <span class="p">[</span><span class="o">=</span><span class="p">]</span> <span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">nd_item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">item</span><span class="p">)</span> <span class="p">{</span>
+        <span class="o">&lt;&lt;</span><span class="n">Perform</span> <span class="n">load</span> <span class="n">into</span> <span class="n">local</span> <span class="n">memory</span><span class="o">&gt;&gt;</span>
+
+        <span class="o">&lt;&lt;</span><span class="n">Reduce</span> <span class="n">into</span> <span class="n">one</span> <span class="n">element</span><span class="o">&gt;&gt;</span>
+
+        <span class="o">&lt;&lt;</span><span class="n">Write</span> <span class="n">group</span> <span class="n">result</span> <span class="n">to</span> <span class="n">global</span> <span class="n">memory</span><span class="o">&gt;&gt;</span>
+      <span class="p">}</span>
+    <span class="p">);</span>
+      <span class="p">}</span> <span class="p">);</span>
+    <span class="n">queue</span><span class="p">.</span><span class="n">wait_and_throw</span><span class="p">();</span>
+
+    <span class="n">len</span> <span class="o">=</span> <span class="n">n_wgroups</span><span class="p">;</span>
+  <span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>Inside the reduction loop, we first find the number of work-groups for this step of reduction. It is the length <code>len</code> left to be reduced divided by the number of elements that each work-group reduces.</p>
+<p>Next, in the command group, we allocate a part of local memory by creating an accessor with <code>access::target::local</code> and a range equal to the work-group size. We checked the memory size earlier, so we know that it is available. As stated above, this region of memory looks different to each work-group and its use is for temporary storage.</p>
+<p>You might wonder, why do we even bother with using local memory when we could carry out the whole operation in global? The answer is that it is much faster. Local memory is (usually) physically closer to the chip than global and it does not suffer from problems such as false sharing, since it is exclusive to each compute unit. It is therefore a good idea to always carry out all temporary operations in local memory for best performance.</p>
+<p>We also obtain an accessor to the data available in global memory. This time <code>get_access</code> is explicitly qualified with <code>access::target::global_buffer</code>, while previously it took on that value by default.</p>
+<p>Lastly, we launch a parallel kernel. We use the <code>nd_range</code> variant, which allows us to specify both the global and local size. The <code>nd_range</code> constructor takes in two <code>range</code> objects of the same dimensionality as itself. The first one describes the number of work-items per dimension (recall that there can be up to three dimensions). The second range argument to <code>nd_range&lt;n&gt;</code> describes the number of work-items in a work-group. To find the number of work-groups per dimension, divide the first argument by the second. In this case the result is <code>n_wgroups</code>, which is how many work-groups will be instantiated. In this variant the kernel lambda takes an <code>nd_item</code> argument. It represents the current work-item and features methods to get detailed information from it, such as local, global, and work-group info.</p>
+<p>Since each step of the reduction loop produces one number per work-group, we set the <code>len</code> to <code>n_wgroups</code> on every iteration, which will continue reducing over the results.</p>
+<p><strong>Perform load into local memory</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="kt">size_t</span> <span class="n">local_id</span> <span class="o">=</span> <span class="n">item</span><span class="p">.</span><span class="n">get_local_linear_id</span><span class="p">();</span>
+  <span class="kt">size_t</span> <span class="n">global_id</span> <span class="o">=</span> <span class="n">item</span><span class="p">.</span><span class="n">get_global_linear_id</span><span class="p">();</span>
+
+  <span class="n">local_mem</span><span class="p">[</span><span class="n">local_id</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+  <span class="k">if</span> <span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">global_id</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">local_mem</span><span class="p">[</span><span class="n">local_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">global_mem</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">global_id</span><span class="p">]</span> <span class="o">+</span> <span class="n">global_mem</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">global_id</span> <span class="o">+</span> <span class="mi">1</span><span class="p">];</span>
+  <span class="p">}</span>
+
+  <span class="n">item</span><span class="p">.</span><span class="n">barrier</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">fence_space</span><span class="o">::</span><span class="n">local_space</span><span class="p">);</span>
+</pre></div>
+</code></pre>
+<p>In the kernel, we firstly zero-initialize the local memory, since it can in fact contain garbage data. The key point here is that 0 is the invariant of our reduction, meaning that <code>x + 0 = x</code>, so we can add the whole array safely even if it isn't entirely filled with data to be reduced.</p>
+<p>We divide our data into parts, each one being computed by a single work-group. The input data is required to be of even size, but it doesn't have to be a multiple of the work-group size. Hence, a few work-items in the last work-group can have no corresponding data. For this reason, the initial load from global to local memory is guarded by an if-statement. As mentioned in the "parallelism" section, this is usually a bad idea. In this case, however, it is okay, because at most one work-group will have divergent work-items. We use a small array for illustration purposes and a specialized kernel would technically be faster, but any real use case can be expected to have much more input data.</p>
+<p>After the load is performed with an addition of the two elements corresponding to each work-item, we emit a <strong>barrier</strong> with a local memory fence. We have to stop for a bit and understand why this is necessary. In the OpenCL memory model, all operations across work-items have relaxed semantics. For example, in the following pseudocode we execute two functions in parallel over the same data:</p>
+<p><strong>Relaxed write</strong></p>
+<pre><code class="c"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+  <span class="kt">void</span> <span class="nf">thread_a</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="kt">void</span> <span class="nf">thread_b</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">ly</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">y</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="n">lx</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%i %i"</span><span class="p">,</span> <span class="n">lx</span><span class="p">,</span> <span class="n">ly</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">in_parallel</span><span class="p">(</span><span class="n">thread_a</span><span class="p">,</span> <span class="n">thread_b</span><span class="p">);</span>
+</pre></div>
+</code></pre>
+<p>In a relaxed memory model, work-item B can in fact print <code>0 2</code>. This looks wrong, because work-item A must have written <code>x</code> into memory before it wrote <code>y</code>. The key point is that operation work-item B can observe A's operations in a different order. This 'really' helps hardware performance, but it comes at the cost of confusing behaviour. To deal with this problem, we have to emit memory fences. Moreover, even if we don't mind reordering, we might want to make sure that all results of write operations propagate between work-items - otherwise they could stay in per-work-item cache and not be visible across work-items.</p>
+<p>To synchronize the state of memory, we use the <code>item::barrier(access::fence_space)</code> operation. A SYCL barrier does two things. Firstly, it makes sure that each work-item within the work-group reaches the barrier call. In other words, it guarantees that the work-group is synchronized at a certain point in the code. It is very important to make sure that 'either all work-items reach the barrier or none do'. For example, the following code is <strong>invalid</strong>:</p>
+<p><strong>Branch barrier</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">(</span><span class="n">local_id</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">item</span><span class="p">.</span><span class="n">barrier</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">fence_space</span><span class="o">::</span><span class="n">local_space</span><span class="p">);</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="n">item</span><span class="p">.</span><span class="n">barrier</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">fence_space</span><span class="o">::</span><span class="n">local_space</span><span class="p">);</span>
+  <span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>It looks innocent, but the problem is that the two instructions are not the same barrier. Work-items below local id 5 will get to the first barrier while the rest will get to the other one, and the execution will stall, both groups waiting on each other forever. A simple transformation of factoring the barrier call out of the conditional would fix it.</p>
+<p>Secondly, <code>item::barrier</code> emits a memory fence in the specified space. It can be either <code>access::fence_space::local_space</code>, <code>::global_space</code> or <code>::global_and_local</code>. A fence ensures that the state of the specified space is consistent across all work-items within the work-group. Importantly, it is 'not possible' to synchronize between work-groups. They are entirely independent, and any write or read in the same global memory area done by two work-groups is a data race. For this reason, it is important to make sure each work-group only works on a dedicated region of global memory without crossover.</p>
+<p>Next, we reduce each work-group's array in local memory:</p>
+<p><strong>Reduce into one element</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">stride</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">stride</span> <span class="o">&lt;</span> <span class="n">wgroup_size</span><span class="p">;</span> <span class="n">stride</span> <span class="o">*=</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">idx</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">stride</span> <span class="o">*</span> <span class="n">local_id</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">idx</span> <span class="o">&lt;</span> <span class="n">wgroup_size</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">local_mem</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">local_mem</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">+</span> <span class="n">local_mem</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="n">stride</span><span class="p">];</span>
+    <span class="p">}</span>
+
+    <span class="n">item</span><span class="p">.</span><span class="n">barrier</span><span class="p">(</span><span class="n">sycl</span><span class="o">::</span><span class="n">access</span><span class="o">::</span><span class="n">fence_space</span><span class="o">::</span><span class="n">local_space</span><span class="p">);</span>
+  <span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>Since each iteration of the <code>for</code> loop depends on the previous one, we emit a barrier every time to synchronise work-items.</p>
+<p>Lastly, write a single number which is the result of this work-group's reduction into global memory.</p>
+<p><strong>Write group result to global memory</strong></p>
+<pre><code class="cpp"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">(</span><span class="n">local_id</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">global_mem</span><span class="p">[</span><span class="n">item</span><span class="p">.</span><span class="n">get_group_linear_id</span><span class="p">()]</span> <span class="o">=</span> <span class="n">local_mem</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+  <span class="p">}</span>
+</pre></div>
+</code></pre>
+<p>And the result is obtained:</p>
+<p>Data: 1 8 5 9 4 2 6 0 1 8 6 2 10 9 0 5
+Sum: 76</p></main>
+            </body>
+        </html>
+        

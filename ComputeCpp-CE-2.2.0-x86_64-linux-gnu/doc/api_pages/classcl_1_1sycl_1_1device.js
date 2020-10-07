@@ -1,0 +1,27 @@
+var classcl_1_1sycl_1_1device =
+[
+    [ "device", "classcl_1_1sycl_1_1device.html#a6f54ed6a0d417c5f97686b35cb9783fa", null ],
+    [ "device", "classcl_1_1sycl_1_1device.html#af916c784b668b70ebfcce55d567f0085", null ],
+    [ "device", "classcl_1_1sycl_1_1device.html#a882bb96298006fa6e23987c806a893b3", null ],
+    [ "device", "classcl_1_1sycl_1_1device.html#a980e472ff3da95d67525b637c55dadf1", null ],
+    [ "device", "classcl_1_1sycl_1_1device.html#a4b0e0f7c8ffe4ec98729f3df8fbbb9f3", null ],
+    [ "~device", "classcl_1_1sycl_1_1device.html#a0776f5d01bc1fe27009cfecc298ad3cd", null ],
+    [ "device", "classcl_1_1sycl_1_1device.html#a2223fa5356b9e2b2079915dbbc4e5d2a", null ],
+    [ "create_sub_devices", "classcl_1_1sycl_1_1device.html#a8482cbc25f3889ad1fd2f96bc41f489a", null ],
+    [ "create_sub_devices", "classcl_1_1sycl_1_1device.html#a4e69cb977e08c03a92876b75611d633f", null ],
+    [ "create_sub_devices", "classcl_1_1sycl_1_1device.html#a016a77359547ad5addcdacfe7d18cccc", null ],
+    [ "get", "classcl_1_1sycl_1_1device.html#ae7f250f19dbb357bc75666833c7c8421", null ],
+    [ "get_impl", "classcl_1_1sycl_1_1device.html#ad2b0f7b8d6bf1becf33e83edf8af4d3a", null ],
+    [ "get_info", "classcl_1_1sycl_1_1device.html#a1e6e8db2e460bcd7b60df67a1a9f5f4b", null ],
+    [ "get_platform", "classcl_1_1sycl_1_1device.html#abad0a0297a22aa81950bc904a5eac5c5", null ],
+    [ "has_extension", "classcl_1_1sycl_1_1device.html#a20b1c63570fc9b98f86f5be8444713b2", null ],
+    [ "has_extension", "classcl_1_1sycl_1_1device.html#aef39878b7e091d6db0a80b1eab53de1f", null ],
+    [ "is_accelerator", "classcl_1_1sycl_1_1device.html#ac0dd54c4063a221e1b1613a70cebd583", null ],
+    [ "is_cpu", "classcl_1_1sycl_1_1device.html#a5d6cffcc825c5d0c5baff2e1a16ce79c", null ],
+    [ "is_gpu", "classcl_1_1sycl_1_1device.html#a2c4bb953efde09ce78d4703237fb0ca4", null ],
+    [ "is_host", "classcl_1_1sycl_1_1device.html#a6f829e908f7c2b22722d6231a10e4bab", null ],
+    [ "operator=", "classcl_1_1sycl_1_1device.html#a42afd14840b1ebf9ab281d841071d90c", null ],
+    [ "operator=", "classcl_1_1sycl_1_1device.html#a69e97bbf36b8fc114bd4cda31f2551a3", null ],
+    [ "operator!=", "classcl_1_1sycl_1_1device.html#ad4b8fafbbc00b5f3e1712df3ec7c6b83", null ],
+    [ "operator==", "classcl_1_1sycl_1_1device.html#adaff232e8166a110d8addb9b0ea291b6", null ]
+];
