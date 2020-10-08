@@ -87,15 +87,13 @@ namespace chiu{
                         cl::sycl::accessor<T, 1, cl::sycl::access::mode::read_write, 
                                                  cl::sycl::access::target::local> scratch(cl::sycl::range<1>(local), h);
 
-                        cl::sycl::stream os(1024, 32, h);
                         /* The parallel_for invocation chosen is the variant with an nd_item
                          * parameter, since the code requires barriers for correctness. */
-                        h.parallel_for<sycl_reduction<T>>(r, [aI, scratch, local, length, bop, os](cl::sycl::nd_item<1> id){
+                        h.parallel_for<sycl_reduction<T>>(r, [aI, scratch, local, length, bop](cl::sycl::nd_item<1> id){
                             //size_t globalid = id.get_global_id(0);
                             size_t localid = id.get_local_id(0);
                      
-                            size_t iid = id.get_local_id(0) + id.get_group(0) * (id.get_local_range(0));
-                            os << "iid = " << iid << '\n'; 
+                            size_t iid = id.get_local_id(0) + id.get_group(0) * (id.get_local_range(0) * 2);
                             /* All threads collectively read from global memory into local.
                              * The barrier ensures all threads' IO is resolved before
                              * execution continues (strictly speaking, all threads within
