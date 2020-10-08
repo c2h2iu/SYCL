@@ -37,8 +37,8 @@ class sycl_reduction;
 
 /* Implements a reduction of an STL vector using SYCL.
  * The input vector is not modified. */
-template <typename T>
-T sycl_reduce(const std::vector<T>& v){
+template <typename T, typename I, typename C>
+T sycl_reduce(const std::vector<T>& v, I& init, C bop){
     T retVal;
 
     {
@@ -55,10 +55,10 @@ T sycl_reduce(const std::vector<T>& v){
         auto device = q.get_device();
         
         auto deviceName = device.get_info<cl::sycl::info::device::name>();
-        std::cout << " Device Name: " << deviceName << '\n';
+        std::cout << "Device Name: " << deviceName << '\n';
         
         auto platformName = device.get_platform().get_info<cl::sycl::info::platform::name>();
-        std::cout << " Platform Name " << platformName << '\n';
+        std::cout << "Platform Name " << platformName << '\n';
 
         /* The buffer is used to initialise the data on the device, but we don't
          * want to copy back and trash it. buffer::set_final_data() tells the
@@ -71,11 +71,14 @@ T sycl_reduce(const std::vector<T>& v){
         size_t local = std::min(v.size(), device.get_info<cl::sycl::info::device::max_work_group_size>());
         size_t length = v.size();
 
+        if(length == 0)    return init;
+        if(length == 1)    return bop(init, v[0]);
+
         {
             /* Each iteration of the do loop applies one level of reduction until
              * the input is of length 1 (i.e. the reduction is complete). */
             do{
-                auto f = [length, local, &bufI](cl::sycl::handler& h) mutable{
+                auto f = [length, local, &bufI, bop](cl::sycl::handler& h) mutable{
                     cl::sycl::nd_range<1> r{cl::sycl::range<1>{std::max(length, local)}, cl::sycl::range<1>{std::min(length, local)}};
 
                     /* Two accessors are used: one to the buffer that is being reduced,
@@ -86,7 +89,7 @@ T sycl_reduce(const std::vector<T>& v){
 
                     /* The parallel_for invocation chosen is the variant with an nd_item
                      * parameter, since the code requires barriers for correctness. */
-                    h.parallel_for<sycl_reduction<T>>(r, [aI, scratch, local, length](cl::sycl::nd_item<1> id){
+                    h.parallel_for<sycl_reduction<T>>(r, [aI, scratch, local, length, bop](cl::sycl::nd_item<1> id){
                         size_t globalid = id.get_global_id(0);
                         size_t localid = id.get_local_id(0);
 
@@ -104,7 +107,7 @@ T sycl_reduce(const std::vector<T>& v){
                         if(globalid < length){
                             int min = (length < local) ? length : local;
                             for(size_t offset = min / 2; offset > 0; offset /= 2){
-                                if(localid < offset)    scratch[localid] += scratch[localid + offset];
+                                if(localid < offset)    scratch[localid] = bop(scratch[localid], scratch[localid + offset]);
                                 id.barrier(cl::sycl::access::fence_space::local_space);
                             }
                   
@@ -129,7 +132,7 @@ T sycl_reduce(const std::vector<T>& v){
              * kernels using the buffers they access are blocked for the length
              * of the accessor's lifetime. */
             auto hI = bufI.template get_access<cl::sycl::access::mode::read>();
-            retVal = hI[0];
+            retVal = bop(init, hI[0]);
         }
     }
     return retVal;
@@ -142,11 +145,10 @@ bool isPowerOfTwo(unsigned int x){
 }
 
 
-int main(){
-    std::cout << " SYCL Sample code: \n";
-    std::cout << "   Reduction of an STL vector \n";
-    
-    const unsigned N = 128u;
+int main(int argc, char* argv[]){
+    unsigned int N = std::stoi(argv[1]);
+    int init = 100;
+    //const unsigned N = 1048576u;
 
     if(!isPowerOfTwo(N)){
         std::cout << "The SYCL reduction example only works with vector sizes Power of Two \n";
@@ -155,17 +157,17 @@ int main(){
 
     std::random_device hwRand;
     std::ranlux48 rand(hwRand());
-    std::uniform_int_distribution<int> dist(0, 10);
+    std::uniform_int_distribution<int> dist(10, 150);
   
     auto f = std::bind(dist, rand);
 
     std::vector<int> v(N);
     std::generate(v.begin(), v.end(), f);
 
-    auto resSycl = sycl_reduce(v);
+    auto resSycl = sycl_reduce(v, init, [=](unsigned a, unsigned b){ return a<b?a:b; });
     std::cout << "SYCL Reduction result: " << resSycl << '\n';
 
-    auto resStl = std::accumulate(std::begin(v), std::end(v), 0);
+    auto resStl = std::accumulate(std::begin(v), std::end(v), init, [=](unsigned a, unsigned b){ return a<b?a:b; });
     std::cout << " STL Reduction result: " << resStl << '\n';
 
     return (resSycl != resStl);
