@@ -4,7 +4,7 @@ read -p 'Filename: ' filename
 
 
 # Building ComputeCpp integration header file
-../bin/compute++ -sycl -O2 -mllvm -inline-threshold=1000 -intelspirmetadata -sycl-target ptx64 -std=c++17 -I"../include"	-I"/usr/include"  -sycl-ih $filename.sycl -o $filename.s -c $filename.cpp
+../bin/compute++ -sycl -O2 -mllvm -inline-threshold=1000 -intelspirmetadata -sycl-target ptx64 -std=c++17 -I"../include"	-I"/usr/include"  -I"/usr/local/cuda-11.1/include/" -sycl-ih $filename.sycl -o $filename.s -c $filename.cpp
 
 
 # Building CXX object samples .o file
