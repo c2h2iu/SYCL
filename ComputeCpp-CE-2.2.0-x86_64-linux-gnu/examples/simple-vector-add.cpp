@@ -44,11 +44,11 @@ template <typename T, size_t N>
 void simple_vadd(const std::array<T, N>& VA, const std::array<T, N>& VB, std::array<T, N>& VC){
     cl::sycl::queue deviceQueue;
 
-    auto device = deviceQueue.get_device();
-    auto deviceName = device.get_info<cl::sycl::info::device::name>();
-    std::cout << " Device Name: " << deviceName << std::endl;
-    auto platformName = device.get_platform().get_info<cl::sycl::info::platform::name>();
-    std::cout << " Platform Name " << platformName << std::endl;
+    //auto device = deviceQueue.get_device();
+    //auto deviceName = device.get_info<cl::sycl::info::device::name>();
+    //std::cout << " Device Name: " << deviceName << std::endl;
+    //auto platformName = device.get_platform().get_info<cl::sycl::info::platform::name>();
+    //std::cout << " Platform Name " << platformName << std::endl;
 
     cl::sycl::range<1> numOfItems{N};
     cl::sycl::buffer<T, 1> bufferA(VA.data(), numOfItems);
@@ -56,6 +56,12 @@ void simple_vadd(const std::array<T, N>& VA, const std::array<T, N>& VB, std::ar
     cl::sycl::buffer<T, 1> bufferC(VC.data(), numOfItems);
 
     deviceQueue.submit([&](cl::sycl::handler& cgh){
+        auto device = deviceQueue.get_device();
+        auto deviceName = device.get_info<cl::sycl::info::device::name>();
+        std::cout << " Device Name: " << deviceName << std::endl;
+        auto platformName = device.get_platform().get_info<cl::sycl::info::platform::name>();
+        std::cout << " Platform Name " << platformName << std::endl;
+        
         auto accessorA = bufferA.template get_access<sycl_read>(cgh);
         auto accessorB = bufferB.template get_access<sycl_read>(cgh);
         auto accessorC = bufferC.template get_access<sycl_write>(cgh);
